@@ -26,7 +26,7 @@ from typing import Callable
 
 from . import __version__
 
-REPO = "glglekdy/Youtube_Downloader"
+REPO = "glglekdy/youtube-downloader"
 LATEST_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 
 UPDATE_DIR = Path(tempfile.gettempdir()) / "YoutubeDownloader-update"

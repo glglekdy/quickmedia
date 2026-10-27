@@ -20,8 +20,12 @@ $excludes = @("tkinter", "PySide6.QtQml", "PySide6.QtQuick", "PySide6.QtPdf", "P
               "PySide6.QtOpenGL", "PySide6.QtSvg", "PySide6.QtSql", "PySide6.QtTest", "unittest") |
     ForEach-Object { "--exclude-module", $_ }
 
+python tools/version_info.py build/version_info.txt
+if ($LASTEXITCODE -ne 0) { throw "버전 정보 생성 실패" }
+
+# 파일명은 ASCII 로 둔다. GitHub 가 릴리즈 자산 이름에서 한글을 지워 버린다.
 python -m PyInstaller --noconfirm --clean --onefile --windowed --name YoutubeDownloader `
-    --icon assets/icon.ico --add-data "ytdl/assets;ytdl/assets" `
+    --version-file build/version_info.txt --icon assets/icon.ico --add-data "ytdl/assets;ytdl/assets" `
     --add-binary "$FFmpeg;." @excludes app.py
 if ($LASTEXITCODE -ne 0) { throw "빌드 실패" }
 

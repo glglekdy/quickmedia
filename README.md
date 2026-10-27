@@ -2,7 +2,7 @@
 
 링크만 붙여넣으면 유튜브 영상(MP4)이나 음원(MP3)을 받는 Windows 앱. [yt-dlp](https://github.com/yt-dlp/yt-dlp) 기반.
 
-**[최신 버전 받기](https://github.com/glglekdy/Youtube_Downloader/releases/latest)**: `YoutubeDownloader.exe`를 받아 실행하세요. 설치나 Python이 필요 없어요.
+**[최신 버전 받기](https://github.com/glglekdy/youtube-downloader/releases/latest)**: `YoutubeDownloader.exe`를 받아 실행하세요. 설치나 Python이 필요 없어요.
 
 - 최고 화질 / 720p / MP3 음원
 - 여러 링크를 넣으면 차례로 받기
