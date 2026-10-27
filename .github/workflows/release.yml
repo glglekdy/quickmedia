@@ -1,0 +1,50 @@
+# v* 태그를 push 하면 exe 를 빌드해 GitHub 릴리즈로 올린다.
+# 설치된 앱은 시작할 때 releases/latest 를 보고 새 exe 로 스스로 업데이트한다.
+#
+#   git tag v1.0.1 && git push origin v1.0.1
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 버전 반영
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart("v")
+          Set-Content ytdl/__init__.py "__version__ = `"$v`"" -Encoding utf8
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: ffmpeg 받기
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip ffmpeg
+          $exe = (Get-ChildItem ffmpeg -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName
+          "FFMPEG=$exe" >> $env:GITHUB_ENV
+
+      - name: 빌드
+        shell: pwsh
+        run: ./build.ps1 -FFmpeg $env:FFMPEG
+
+      - name: 릴리즈 올리기
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/YoutubeDownloader.exe
+          generate_release_notes: true

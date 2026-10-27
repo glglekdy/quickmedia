@@ -1,0 +1,155 @@
+"""색 토큰과 스타일시트. DCCON 다운로더 / RCM 편집기와 같은 결.
+
+무채색 회색 단계 + 보라 강조색, 테두리 없는 납작한 버튼.
+OS 라이트/다크 설정을 따르고, 바꾸면 바로 따라간다.
+"""
+
+from __future__ import annotations
+
+import re
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QApplication
+
+LIGHT = {
+    "bg": "#f5f5f5",
+    "surface": "#ffffff",
+    "border": "#e5e5e5",
+    "text": "#1f1f1f",
+    "heading": "#141414",
+    "muted": "#737373",
+    "btn_bg": "#ebebeb",
+    "btn_hover": "#e0e0e0",
+    "btn_pressed": "#d6d6d6",
+    "disabled_fg": "#a3a3a3",
+    "disabled_bg": "#f0f0f0",
+    "primary_disabled_bg": "#ddd6fe",
+    "primary_disabled_fg": "#ffffff",
+    "input_bg": "#ebebeb",
+    "input_focus_bg": "#ffffff",
+    "popup_bg": "#ffffff",
+    "card_bg": "#ffffff",
+    "track": "#e5e5e5",
+    "percent": "#7c3aed",
+    "accent": "#8b5cf6",
+    "danger": "#dc2626",
+    "success": "#16a34a",
+    "scroll_handle": "#d4d4d4",
+}
+
+# RCM tokens.css 값을 바탕으로 한다.
+DARK = {
+    "bg": "#141414",
+    "surface": "#1c1c1c",
+    "border": "#2e2e2e",
+    "text": "#e6e6e6",
+    "heading": "#f0f0f0",
+    "muted": "#8c8c8c",
+    "btn_bg": "#2c2c2c",
+    "btn_hover": "#333333",
+    "btn_pressed": "#3a3a3a",
+    "disabled_fg": "#5c5c5c",
+    "disabled_bg": "#1f1f1f",
+    "primary_disabled_bg": "#3b2d63",
+    "primary_disabled_fg": "#8c8c8c",
+    "input_bg": "#2c2c2c",
+    "input_focus_bg": "#2c2c2c",
+    "popup_bg": "#232323",
+    "card_bg": "#232323",
+    "track": "#2c2c2c",
+    "percent": "#a78bfa",
+    "accent": "#8b5cf6",
+    "danger": "#ef4444",
+    "success": "#22c55e",
+    "scroll_handle": "#2c2c2c",
+}
+
+_TEMPLATE = """
+QWidget {
+    font-family: "Pretendard", "Malgun Gothic", "Segoe UI", sans-serif;
+    font-size: 13px; color: $text;
+}
+QMainWindow, QDialog, #mainArea { background: $bg; }
+QLabel { background: transparent; }
+QToolTip { background: $popup_bg; color: $text; border: 1px solid $border; border-radius: 6px; padding: 6px 8px; }
+#crumb { font-size: 22px; font-weight: 600; color: $heading; }
+#viewHint, #hint { color: $muted; font-size: 12px; }
+#sectionTitle { color: $muted; font-size: 12px; font-weight: 500; }
+#segment { background: $input_bg; border-radius: 6px; }
+QPushButton#segButton {
+    background: transparent; color: $muted; border-radius: 4px; padding: 6px 14px; min-height: 14px;
+}
+QPushButton#segButton:hover { color: $text; }
+QPushButton#segButton:checked { background: $btn_hover; color: $text; font-weight: 600; }
+QPushButton {
+    background: $btn_bg; border: none; border-radius: 6px;
+    padding: 7px 12px; color: $text; font-weight: 500; min-height: 16px;
+}
+QPushButton:hover { background: $btn_hover; }
+QPushButton:pressed { background: $btn_pressed; }
+QPushButton:disabled { color: $disabled_fg; background: $disabled_bg; }
+QPushButton#primary { background: $accent; color: white; font-weight: 600; padding: 7px 18px; }
+QPushButton#primary:hover { background: #9d74f8; }
+QPushButton#primary:pressed { background: #7c4ff0; }
+QPushButton#primary:disabled { background: $primary_disabled_bg; color: $primary_disabled_fg; }
+QPushButton#ghost { background: transparent; color: $muted; padding: 4px 8px; }
+QPushButton#ghost:hover { background: $btn_hover; color: $text; }
+QLineEdit {
+    background: $input_bg; border: 1px solid transparent; border-radius: 6px;
+    padding: 8px 10px; color: $text; font-weight: 500;
+    selection-background-color: $accent; selection-color: white;
+}
+QLineEdit:focus { border-color: $accent; background: $input_focus_bg; }
+QLineEdit[readOnly="true"] { color: $muted; }
+QScrollArea, #queueHolder { background: $bg; border: none; }
+#card { background: $card_bg; border: 1px solid $border; border-radius: 10px; }
+#cardTitle { font-weight: 500; }
+#cardStatus { color: $muted; font-size: 12px; }
+#cardStatus[state="error"] { color: $danger; }
+#cardStatus[state="done"] { color: $success; }
+#percent { color: $percent; font-size: 12px; font-weight: 600; }
+#dock { background: $surface; border-top: 1px solid $border; }
+#emptyState { color: $muted; font-size: 14px; padding: 32px; }
+QProgressBar { border: none; border-radius: 3px; background: $track; max-height: 6px; }
+QProgressBar::chunk { background: $accent; border-radius: 3px; }
+QScrollBar:vertical { background: transparent; width: 8px; margin: 2px 1px; }
+QScrollBar::handle:vertical { background: $scroll_handle; border-radius: 3px; min-height: 40px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
+"""
+
+_active = LIGHT
+
+
+def color(name: str) -> str:
+    return _active[name]
+
+
+def _palette(t: dict[str, str]) -> QPalette:
+    """스타일시트가 안 닿는 곳(메시지 상자, 폴더 선택 창 등)을 위한 팔레트."""
+    pal = QPalette()
+    for role, key in {
+        QPalette.ColorRole.Window: "bg",
+        QPalette.ColorRole.WindowText: "text",
+        QPalette.ColorRole.Base: "input_bg",
+        QPalette.ColorRole.Text: "text",
+        QPalette.ColorRole.Button: "btn_bg",
+        QPalette.ColorRole.ButtonText: "text",
+        QPalette.ColorRole.Highlight: "accent",
+        QPalette.ColorRole.PlaceholderText: "muted",
+    }.items():
+        pal.setColor(role, QColor(t[key]))
+    return pal
+
+
+def _restyle(app: QApplication) -> None:
+    global _active
+    _active = DARK if app.styleHints().colorScheme() == Qt.ColorScheme.Dark else LIGHT
+    app.setPalette(_palette(_active))
+    app.setStyleSheet(re.sub(r"\$(\w+)", lambda m: _active[m.group(1)], _TEMPLATE))
+
+
+def apply(app: QApplication) -> None:
+    app.styleHints().colorSchemeChanged.connect(lambda *_: _restyle(app))
+    _restyle(app)
