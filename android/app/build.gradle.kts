@@ -42,6 +42,9 @@ android {
     packaging {
         jniLibs { useLegacyPackaging = true }
     }
+
+    // 16KB 페이지 기기에서 ffmpeg 가 뜨게 바꿔 넣을 libwebp. third_party/libwebp-16k/README.md
+    sourceSets["main"].jniLibs.directories.add("../third_party/libwebp-16k/jniLibs")
 }
 
 dependencies {

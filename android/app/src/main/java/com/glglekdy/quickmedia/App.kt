@@ -1,7 +1,10 @@
 package com.glglekdy.quickmedia
 
 import android.app.Application
+import android.system.Os
+import android.system.OsConstants
 import android.util.Log
+import com.glglekdy.quickmedia.download.fixPageSize
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +33,12 @@ class App : Application() {
             _tools.value = try {
                 YoutubeDL.getInstance().init(this@App)
                 FFmpeg.getInstance().init(this@App)
+                // 4KB 페이지 기기는 라이브러리 그대로 둔다
+                if (Os.sysconf(OsConstants._SC_PAGESIZE) > 4096) {
+                    val ffmpegLib = File(noBackupFilesDir, "youtubedl-android/packages/ffmpeg/usr/lib")
+                    val fixed = fixPageSize(File(applicationInfo.nativeLibraryDir), ffmpegLib)
+                    if (fixed.isNotEmpty()) Log.i(TAG, "16KB 페이지용으로 바꿈: $fixed")
+                }
                 Log.i(TAG, "다운로드 도구 준비됨")
                 Tools.Ready
             } catch (e: Exception) {

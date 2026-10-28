@@ -9,7 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.SystemClock
+import android.util.Log
 import com.glglekdy.quickmedia.App
+import com.glglekdy.quickmedia.BuildConfig
 import com.glglekdy.quickmedia.MainActivity
 import com.glglekdy.quickmedia.R
 import com.glglekdy.quickmedia.Tools
@@ -51,7 +53,7 @@ class DownloadService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lastStartId = startId
-        startForeground(NOTIFICATION_ID, notification("준비 중…", -1f), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        startForeground(NOTIFICATION_ID, notification("QuickMedia", "준비 중…", -1f), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         if (worker?.isActive != true) worker = scope.launch { runQueue() }
         return START_NOT_STICKY
     }
@@ -93,6 +95,7 @@ class DownloadService : Service() {
         try {
             withContext(Dispatchers.IO) { dir.deleteRecursively(); dir.mkdirs() }
             val request = YoutubeDLRequest(job.url).addCommands(YtdlpArgs.build(job.options, dir.absolutePath))
+            if (BuildConfig.DEBUG) Log.d(App.TAG, "yt-dlp ${request.buildCommand().joinToString(" ")}")
             // 재생목록은 일부 항목이 없어도(삭제·비공개) 나머지를 받고 오류로 끝난다. 받은 건 저장한다.
             val error = withContext(Dispatchers.IO) {
                 try {
@@ -105,8 +108,9 @@ class DownloadService : Service() {
                 }
             }
             if (cancelled(job.id)) return
+            error?.let { Log.w(App.TAG, "yt-dlp 가 오류로 끝남: ${it.message}") }
 
-            val files = withContext(Dispatchers.IO) { resultFiles(dir) }
+            val files = withContext(Dispatchers.IO) { resultFiles(dir, failed = error != null) }
             val reason = error?.let { friendlyError(it.message.orEmpty()) }
             if (files.isEmpty()) {
                 fail(job.id, reason ?: "받은 파일이 없어요")
@@ -131,6 +135,7 @@ class DownloadService : Service() {
 
     /** 라이브러리의 출력 읽기 스레드에서 불린다 */
     private fun onOutput(id: Long, progress: JobProgress, pct: Float, line: String) {
+        if (BuildConfig.DEBUG) Log.v(App.TAG, line)
         val (percent, status) = progress.on(pct, line)
         var shown: Job? = null
         Jobs.update(id) { job ->
@@ -150,13 +155,14 @@ class DownloadService : Service() {
         val now = SystemClock.elapsedRealtime()
         if (!force && now - lastNotify < 500) return
         lastNotify = now
-        notifications.notify(NOTIFICATION_ID, notification("$title · $status", percent))
+        notifications.notify(NOTIFICATION_ID, notification(title, status, percent))
     }
 
-    private fun notification(text: String, percent: Float): Notification =
+    // 접힌 알림에는 제목 줄과 진행 막대만 보인다. 그래서 제목 줄에 영상 제목을 둔다.
+    private fun notification(title: String, text: String, percent: Float): Notification =
         Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("QuickMedia")
+            .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
             .setOnlyAlertOnce(true)

@@ -11,6 +11,9 @@ class FriendlyErrorTest {
         "ERROR: [youtube] abc: This video is unavailable" to "삭제되었거나 볼 수 없는 영상이에요",
         "ERROR: Requested format is not available" to "고른 화질·형식이 없는 영상이에요. 옵션을 바꿔 보세요",
         "ERROR: [Errno 7] No address associated with hostname" to "인터넷 연결을 확인해 주세요",
+        // 오래된 yt-dlp 는 유튜브가 바뀌면 403 을 받는다
+        "ERROR: unable to download video data: HTTP Error 403: Forbidden"
+            to "사이트가 다운로드를 막았어요. 설정에서 yt-dlp 를 갱신한 뒤 다시 해 보세요",
         "ERROR: something odd" to "something odd",
     ).forEach { (m, want) -> assertEquals(m, want, friendlyError(m)) }
 

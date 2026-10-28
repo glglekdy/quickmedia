@@ -8,6 +8,8 @@ private val ERRORS = listOf(
     listOf("requested format is not available") to "고른 화질·형식이 없는 영상이에요. 옵션을 바꿔 보세요",
     listOf("getaddrinfo", "timed out", "unable to connect", "no address associated", "network is unreachable")
         to "인터넷 연결을 확인해 주세요",
+    // 사이트가 바뀌어 앱에 든 yt-dlp 로는 못 받을 때
+    listOf("http error 403") to "사이트가 다운로드를 막았어요. 설정에서 yt-dlp 를 갱신한 뒤 다시 해 보세요",
 )
 
 /** yt-dlp 오류를 화면 문구로. 모르는 오류는 원문 앞 160자. */

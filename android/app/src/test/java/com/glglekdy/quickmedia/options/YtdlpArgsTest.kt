@@ -51,6 +51,12 @@ class YtdlpArgsTest {
         assertFalse("--download-sections" in args(DownloadOptions()))
     }
 
+    // --embed-metadata 는 챕터도 넣는데, 자르기 전 영상의 챕터라 5초짜리가 19초로 나온다
+    @Test fun sectionLeavesOutChapters() {
+        assertTrue("--no-embed-chapters" in args(DownloadOptions(embedMeta = true, sectionStart = "0:05")))
+        assertFalse("--no-embed-chapters" in args(DownloadOptions(embedMeta = true)))
+    }
+
     @Test fun parseTime() {
         assertEquals(83.0, YtdlpArgs.parseTime("1:23"))
         assertEquals(3723.0, YtdlpArgs.parseTime("1:02:03"))

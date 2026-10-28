@@ -30,8 +30,9 @@ object YtdlpArgs {
         val start = o.sectionStart.trim()
         val end = o.sectionEnd.trim()
         if (start.isNotEmpty() || end.isNotEmpty()) {
+            // --embed-metadata 가 넣는 챕터는 자르기 전 영상 것이라 파일 길이가 원래 길이로 나온다
             addAll(listOf("--download-sections", "*${start.ifEmpty { "0" }}-${end.ifEmpty { "inf" }}",
-                "--force-keyframes-at-cuts"))
+                "--force-keyframes-at-cuts", "--no-embed-chapters"))
         }
     }
 

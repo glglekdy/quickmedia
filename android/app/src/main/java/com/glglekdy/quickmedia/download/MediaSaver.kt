@@ -32,9 +32,21 @@ fun numberedName(name: String, taken: (String) -> Boolean): String {
 
 fun mimeOf(name: String): String = MIME[name.substringAfterLast('.', "").lowercase()] ?: "application/octet-stream"
 
-/** 작업 폴더에서 다 받은 파일만, 이름순 */
-fun resultFiles(dir: File): List<File> =
-    dir.listFiles().orEmpty().filter { it.isFile && !PARTIAL.containsMatchIn(it.name) }.sortedBy { it.name }
+// 영상·음성을 따로 받아 합치기 전 이름: `제목.f137.mp4`. 합쳐지면 지워진다.
+private val UNMERGED = Regex("""\.f[\w-]+\.\w+$""")
+
+/**
+ * 작업 폴더에서 다 받은 파일만, 이름순.
+ * [failed] 면 yt-dlp 가 오류로 끝난 것이라 영상·음성 파일만 두고, 합치지 못한 조각과 파일에 넣으려던 썸네일은 뺀다.
+ * 성공했을 때는 조각이 남지 않으니 `lemonde.fr.mp4` 같은 제목을 조각으로 잘못 보지 않게 빼지 않는다.
+ */
+fun resultFiles(dir: File, failed: Boolean = false): List<File> =
+    dir.listFiles().orEmpty()
+        .filter { it.isFile && !PARTIAL.containsMatchIn(it.name) }
+        .filter { !failed || (isMedia(it.name) && !UNMERGED.containsMatchIn(it.name)) }
+        .sortedBy { it.name }
+
+private fun isMedia(name: String) = mimeOf(name).let { it.startsWith("video/") || it.startsWith("audio/") }
 
 /** 앱 캐시에 받은 파일을 `다운로드/QuickMedia` 로 옮긴다. 안드로이드 10+ 는 저장소 권한이 필요 없다. */
 class MediaSaver(context: Context) {
