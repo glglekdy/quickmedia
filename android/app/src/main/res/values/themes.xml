@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose 가 그리기 전 잠깐 보이는 창 배경만 정한다 -->
+    <style name="Theme.QuickMedia" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
