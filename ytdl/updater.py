@@ -1,11 +1,12 @@
-"""GitHub 릴리즈로 자기 자신을 업데이트한다. (DCCON 다운로더 updater 를 단일 exe 용으로 줄인 것)
+"""GitHub 릴리즈의 설치 파일로 자기 자신을 업데이트한다.
 
 1. `fetch_latest()`  releases/latest 를 읽어 지금보다 새 버전인지 본다.
-2. `download()`      .exe 자산을 받아 임시 폴더에 둔다.
+2. `download()`      QuickMedia-Setup-*.exe 자산을 받아 임시 폴더에 둔다.
 3. `launch_apply()`  도우미 스크립트를 띄우고 앱은 종료한다. 스크립트가 앱이
-                     완전히 끝나기를 기다렸다가 exe 를 덮어쓰고 다시 띄운다.
+                     완전히 끝나기를 기다렸다가 설치 파일을 조용히 실행한다.
+                     설치가 끝나면 설치 파일이 앱을 다시 띄운다.
 
-실행 중인 exe 는 윈도우가 잠그고 있어 스스로 덮어쓸 수 없어서 마지막 단계는
+실행 중인 앱 파일은 윈도우가 잠그고 있어 덮어쓸 수 없어서 마지막 단계는
 바깥 프로세스가 맡는다.
 """
 
@@ -25,11 +26,12 @@ from pathlib import Path
 from typing import Callable
 
 from . import __version__
+from .app_info import NAME, REPO
 
-REPO = "glglekdy/youtube-downloader"
 LATEST_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 
-UPDATE_DIR = Path(tempfile.gettempdir()) / "YoutubeDownloader-update"
+UPDATE_DIR = Path(tempfile.gettempdir()) / f"{NAME}-update"
+_SETUP_NAME = re.compile(rf"^{NAME}-Setup-.+\.exe$", re.IGNORECASE)
 
 
 class UpdateError(RuntimeError):
@@ -63,8 +65,13 @@ class Release:
 
 def _request(url: str, accept: str = "application/vnd.github+json"):
     req = urllib.request.Request(url, headers={
-        "User-Agent": f"YoutubeDownloader/{__version__}", "Accept": accept})
+        "User-Agent": f"{NAME}/{__version__}", "Accept": accept})
     return urllib.request.urlopen(req, timeout=20)
+
+
+def pick_setup_asset(assets: list[dict]) -> dict | None:
+    """릴리즈 자산 중 설치 파일. 다른 exe 는 보지 않는다."""
+    return next((a for a in assets if _SETUP_NAME.match(a.get("name") or "")), None)
 
 
 def fetch_latest() -> Release | None:
@@ -82,18 +89,17 @@ def fetch_latest() -> Release | None:
     version = (data.get("tag_name") or "").lstrip("vV")
     if parse_version(version) <= parse_version(__version__):
         return None
-    exe = next((a for a in data.get("assets") or []
-                if (a.get("name") or "").lower().endswith(".exe")), None)
-    if exe is None:
+    setup = pick_setup_asset(data.get("assets") or [])
+    if setup is None:
         return None
     return Release(version=version, notes=data.get("body") or "",
-                   asset_url=exe["browser_download_url"], asset_size=int(exe.get("size") or 0),
-                   digest=exe.get("digest") or "")
+                   asset_url=setup["browser_download_url"], asset_size=int(setup.get("size") or 0),
+                   digest=setup.get("digest") or "")
 
 
 def download(release: Release, progress: Callable[[int, int], None] | None = None) -> Path:
     UPDATE_DIR.mkdir(parents=True, exist_ok=True)
-    target = UPDATE_DIR / f"YoutubeDownloader-{release.version}.exe"
+    target = UPDATE_DIR / f"{NAME}-Setup-{release.version}.exe"
     part = target.with_suffix(".part")
     hasher = hashlib.sha256()
     try:
@@ -121,19 +127,14 @@ def download(release: Release, progress: Callable[[int, int], None] | None = Non
     return target
 
 
-# 앱이 끝나기를 기다렸다가 덮어쓰고 다시 띄운다. 실패하면 옛 exe 를 그대로 띄운다.
+# 앱이 끝나기를 기다렸다가 설치 파일을 조용히 실행한다.
 _APPLY_SCRIPT = r"""
-param([string]$WaitPids, [string]$Source, [string]$Exe)
-foreach ($p in $WaitPids.Split(',')) {
-    if ($p) { Wait-Process -Id ([int]$p) -Timeout 120 -ErrorAction SilentlyContinue }
-}
-# 프로세스가 끝나도 파일 핸들이 늦게 풀리는 경우가 있어 몇 번 더 시도한다.
-for ($i = 0; $i -lt 20; $i++) {
-    try { Copy-Item $Source $Exe -Force -ErrorAction Stop; break }
-    catch { Start-Sleep -Milliseconds 500 }
-}
-Remove-Item $Source -Force -ErrorAction SilentlyContinue
-Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe)
+param([int]$WaitPid, [string]$Setup, [string]$Exe)
+Wait-Process -Id $WaitPid -Timeout 120 -ErrorAction SilentlyContinue
+$p = Start-Process -FilePath $Setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+# 성공하면 설치 파일의 [Run] 이 앱을 다시 띄운다. 실패하면 Inno 가 되돌려 둔 기존 앱을 띄운다.
+if ($p.ExitCode -ne 0 -and (Test-Path $Exe)) { Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe) }
+Remove-Item $Setup -Force -ErrorAction SilentlyContinue
 """
 
 
@@ -146,19 +147,23 @@ def _relaunch_env() -> dict[str, str]:
     return env
 
 
-def launch_apply(new_exe: Path) -> None:
+def apply_command(script: Path, pid: int, setup: Path, exe: Path) -> list[str]:
+    """도우미 PowerShell 을 띄울 인자. 리스트로 넘기므로 공백·한글 경로도 그대로 간다."""
+    return ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+            "-WindowStyle", "Hidden", "-File", str(script),
+            "-WaitPid", str(pid), "-Setup", str(setup), "-Exe", str(exe)]
+
+
+def launch_apply(setup: Path) -> None:
     """도우미를 띄운다. 호출한 쪽은 곧바로 앱을 종료해야 한다."""
     if not can_self_update():
         raise UpdateError("exe 로 실행할 때만 자동 업데이트할 수 있어요.")
     script = UPDATE_DIR / "apply_update.ps1"
     # PowerShell 5.1 은 BOM 이 없으면 ANSI 로 읽어 한글 경로가 깨진다.
     script.write_text(_APPLY_SCRIPT, encoding="utf-8-sig")
-    # onefile 은 부트로더 부모 프로세스가 exe 를 잡고 있다.
-    pids = f"{os.getpid()},{os.getppid()}"
+    # onedir 은 부모 부트로더가 없다. 부모(탐색기)를 기다리면 타임아웃까지 멈춘다.
     subprocess.Popen(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-         "-WindowStyle", "Hidden", "-File", str(script),
-         "-WaitPids", pids, "-Source", str(new_exe), "-Exe", str(Path(sys.executable).resolve())],
+        apply_command(script, os.getpid(), setup, Path(sys.executable).resolve()),
         env=_relaunch_env(),
         creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP,
         close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
