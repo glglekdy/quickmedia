@@ -7,10 +7,12 @@
 from __future__ import annotations
 
 import dataclasses
+import optparse
+import os
 from dataclasses import dataclass
 
 import yt_dlp
-from yt_dlp.utils import sanitize_filename
+from yt_dlp.utils import PlaylistEntries, parse_bytes, parse_duration, sanitize_filename
 
 QUALITIES = ("best", "2160", "1440", "1080", "720", "480", "360")
 CONTAINERS = ("mp4", "mkv", "webm")
@@ -239,7 +241,7 @@ def build_args(opts: DownloadOptions, settings: AppSettings, *, folder: str, arc
     else:
         args.append("--yes-playlist")
         if opts.playlist_items:
-            args += ["-I", opts.playlist_items]
+            args += ["-I", opts.playlist_items.replace(" ", "")]
     if opts.skip_archived:
         args += ["--download-archive", archive]
 
@@ -325,3 +327,48 @@ def to_ydl_opts(opts: DownloadOptions, settings: AppSettings, *, folder: str, ar
     if ffmpeg_dir:
         ydl_opts["ffmpeg_location"] = ffmpeg_dir
     return ydl_opts
+
+
+# ---------- 입력값 검사 ----------
+
+def validate_options(opts: DownloadOptions) -> dict[str, str]:
+    """패널 값 오류. 키는 칸 이름, 값은 화면 문구."""
+    errors: dict[str, str] = {}
+    if opts.section_start or opts.section_end:
+        start = parse_duration(opts.section_start) if opts.section_start else 0
+        end = parse_duration(opts.section_end) if opts.section_end else float("inf")
+        if start is None or end is None:
+            errors["section"] = "시간은 1:30 처럼 써 주세요"
+        elif start >= end:
+            errors["section"] = "끝이 시작보다 뒤여야 해요"
+    if opts.playlist == "all" and opts.playlist_items:
+        try:
+            list(PlaylistEntries.parse_playlist_items(opts.playlist_items.replace(" ", "")))
+        except ValueError:
+            errors["playlist_items"] = "범위는 1-10, 15 처럼 써 주세요"
+    return errors
+
+
+def _extra_args_error(text: str) -> str | None:
+    try:
+        parsed = yt_dlp.parse_options(["--ignore-config", *split_extra(text)])
+    except (optparse.OptParseError, ValueError, SystemExit) as exc:
+        last = (str(exc).strip().splitlines() or [""])[-1]
+        return "고급 옵션을 읽지 못했어요: " + last.split("error: ", 1)[-1]
+    if parsed.urls:
+        return "고급 옵션에는 링크를 넣을 수 없어요"
+    return None
+
+
+def validate_settings(s: AppSettings) -> dict[str, str]:
+    """설정 창 값 오류. 키는 칸 이름, 값은 화면 문구."""
+    errors: dict[str, str] = {}
+    if s.rate_limit and parse_bytes(s.rate_limit) is None:
+        errors["rate_limit"] = "속도 제한은 5M, 500K 처럼 써 주세요"
+    if s.cookies == "file" and not os.path.isfile(s.cookie_file):
+        errors["cookie_file"] = "쿠키 파일을 찾을 수 없어요"
+    if s.name_template == "custom" and not s.custom_template.strip():
+        errors["custom_template"] = "파일 이름 규칙을 입력해 주세요"
+    if s.extra_args.strip() and (msg := _extra_args_error(s.extra_args)):
+        errors["extra_args"] = msg
+    return errors

@@ -119,3 +119,9 @@ def test_to_ydl_opts_audio_postprocessors():
     keys = [p["key"] for p in o["postprocessors"]]
     assert keys.index("FFmpegExtractAudio") < keys.index("EmbedThumbnail")
     assert o.get("ffmpeg_location") is None  # yt-dlp 가 키를 None 으로 둔다
+
+
+def test_playlist_items_spaces_removed():
+    # 검사는 "1-10, 15" 를 받아 주므로 yt-dlp 에 넘길 때도 공백을 빼야 한다
+    a = args(DownloadOptions(playlist="all", playlist_items="1-10, 15"))
+    assert a[a.index("-I") + 1] == "1-10,15"
