@@ -7,6 +7,8 @@ OS 라이트/다크 설정을 따르고, 바꾸면 바로 따라간다.
 from __future__ import annotations
 
 import re
+import sys
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPalette
@@ -65,6 +67,9 @@ DARK = {
     "scroll_handle": "#2c2c2c",
 }
 
+# 체크 표시·화살표 그림. exe 로 묶이면 _internal/ytdl/assets 에 들어간다.
+ASSETS = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent)) / "ytdl" / "assets"
+
 _TEMPLATE = """
 QWidget {
     font-family: "Pretendard", "Malgun Gothic", "Segoe UI", sans-serif;
@@ -102,6 +107,48 @@ QLineEdit {
 }
 QLineEdit:focus { border-color: $accent; background: $input_focus_bg; }
 QLineEdit[readOnly="true"] { color: $muted; }
+QComboBox, QSpinBox {
+    background: $input_bg; border: 1px solid transparent; border-radius: 6px;
+    padding: 6px 10px; color: $text; font-weight: 500; min-height: 16px;
+}
+QComboBox:focus, QSpinBox:focus { border-color: $accent; }
+QComboBox:disabled, QSpinBox:disabled, QLineEdit:disabled { color: $disabled_fg; }
+QComboBox::drop-down { border: none; width: 22px; }
+QComboBox::down-arrow { image: url($assets/arrow-down.svg); width: 10px; height: 10px; }
+QSpinBox { padding-right: 22px; }
+QSpinBox::up-button, QSpinBox::down-button {
+    subcontrol-origin: border; width: 20px; border: none; background: transparent;
+}
+QSpinBox::up-button { subcontrol-position: top right; }
+QSpinBox::down-button { subcontrol-position: bottom right; }
+QSpinBox::up-button:hover, QSpinBox::down-button:hover { background: $btn_hover; border-radius: 4px; }
+QSpinBox::up-arrow { image: url($assets/arrow-up.svg); width: 9px; height: 9px; }
+QSpinBox::down-arrow { image: url($assets/arrow-down.svg); width: 9px; height: 9px; }
+QComboBox QAbstractItemView {
+    background: $popup_bg; border: 1px solid $border; selection-background-color: $btn_hover;
+    selection-color: $text; outline: none;
+}
+QCheckBox, QRadioButton { spacing: 6px; background: transparent; }
+QCheckBox::indicator, QRadioButton::indicator {
+    width: 14px; height: 14px; border: 1px solid $disabled_fg; background: $input_focus_bg;
+}
+QCheckBox::indicator { border-radius: 4px; }
+QRadioButton::indicator { border-radius: 8px; }
+QCheckBox::indicator:hover, QRadioButton::indicator:hover { border-color: $accent; }
+QCheckBox::indicator:checked { background: $accent; border-color: $accent; image: url($assets/check.svg); }
+QRadioButton::indicator:checked { background: $input_focus_bg; border: 5px solid $accent; width: 6px; height: 6px; }
+QCheckBox::indicator:disabled, QRadioButton::indicator:disabled { border-color: $border; background: $disabled_bg; }
+QCheckBox:disabled, QRadioButton:disabled { color: $disabled_fg; }
+QTabWidget::pane { background: $card_bg; border: 1px solid $border; border-radius: 8px; top: -1px; }
+QTabBar::tab {
+    background: transparent; color: $muted; padding: 6px 12px; border: none;
+    border-bottom: 2px solid transparent; font-weight: 500;
+}
+QTabBar::tab:hover { color: $text; }
+QTabBar::tab:selected { color: $text; border-bottom: 2px solid $accent; }
+#optionsPanel { background: transparent; }
+#fieldError { color: $danger; font-size: 12px; }
+#cardSite { color: $muted; font-size: 11px; }
 QScrollArea, #queueHolder { background: $bg; border: none; }
 #card { background: $card_bg; border: 1px solid $border; border-radius: 10px; }
 #cardTitle { font-weight: 500; }
@@ -143,11 +190,16 @@ def _palette(t: dict[str, str]) -> QPalette:
     return pal
 
 
+def stylesheet(tokens: dict[str, str]) -> str:
+    values = {**tokens, "assets": ASSETS.as_posix()}
+    return re.sub(r"\$(\w+)", lambda m: values[m.group(1)], _TEMPLATE)
+
+
 def _restyle(app: QApplication) -> None:
     global _active
     _active = DARK if app.styleHints().colorScheme() == Qt.ColorScheme.Dark else LIGHT
     app.setPalette(_palette(_active))
-    app.setStyleSheet(re.sub(r"\$(\w+)", lambda m: _active[m.group(1)], _TEMPLATE))
+    app.setStyleSheet(stylesheet(_active))
 
 
 def apply(app: QApplication) -> None:
