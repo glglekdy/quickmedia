@@ -15,6 +15,7 @@ from ytdl.options import AppSettings, DownloadOptions, to_ydl_opts
     ("ERROR: Sign in to confirm your age", "로그인이 필요한 영상이에요. ⚙ 설정에서 쿠키를 켜 보세요"),
     ("ERROR: Join this channel to get access to members-only content", "로그인이 필요한 영상이에요. ⚙ 설정에서 쿠키를 켜 보세요"),
     ("ERROR: Video unavailable", "삭제되었거나 볼 수 없는 영상이에요"),
+    ("ERROR: [youtube] aaaaaaaaaaa: This video is unavailable", "삭제되었거나 볼 수 없는 영상이에요"),
     ("ERROR: Requested format is not available", "고른 화질·형식이 없는 영상이에요. 세부 옵션을 바꿔 보세요"),
     ("ERROR: Postprocessing: ffprobe and ffmpeg not found", "변환 도구(ffmpeg)를 찾지 못했어요"),
     ("ERROR: Unable to connect to proxy", "인터넷 연결이나 프록시 설정을 확인해 주세요"),

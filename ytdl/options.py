@@ -342,7 +342,9 @@ def to_ydl_opts(opts: DownloadOptions, settings: AppSettings, *, folder: str, ar
             *split_extra(settings.extra_args)]
     ydl_opts = yt_dlp.parse_options(argv).ydl_opts
     # 앱이 진행률을 그리고 재생목록을 직접 펼치려면 이 값들은 앱 것이어야 한다
-    ydl_opts.update(quiet=True, no_warnings=True, noprogress=True, extract_flat="in_playlist")
+    # 오류는 예외로 받아 화면에 이유를 보인다. 묻히면 받은 게 없는 채로 끝나 '이미 받음'으로 보인다.
+    ydl_opts.update(quiet=True, no_warnings=True, noprogress=True, extract_flat="in_playlist",
+                    ignoreerrors=False)
     if _embed_subs(opts):
         # --embed-subs 에 --write-auto-subs 가 붙으면 yt-dlp 가 일반 자막을 끈다
         ydl_opts["writesubtitles"] = True

@@ -84,7 +84,7 @@ _ERRORS = [
      "브라우저 쿠키를 읽지 못했어요. 브라우저를 닫고 다시 시도하거나 cookies.txt 를 써 주세요"),
     (("sign in", "login required", "private video", "members-only"),
      "로그인이 필요한 영상이에요. ⚙ 설정에서 쿠키를 켜 보세요"),
-    (("video unavailable", "this video is not available"), "삭제되었거나 볼 수 없는 영상이에요"),
+    (("video unavailable", "video is unavailable", "this video is not available"), "삭제되었거나 볼 수 없는 영상이에요"),
     (("requested format is not available",), "고른 화질·형식이 없는 영상이에요. 세부 옵션을 바꿔 보세요"),
     (("getaddrinfo", "timed out", "unable to connect", "proxyerror"), "인터넷 연결이나 프록시 설정을 확인해 주세요"),
 ]

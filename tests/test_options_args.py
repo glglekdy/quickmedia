@@ -114,6 +114,12 @@ def test_to_ydl_opts_fixed_values_and_extra_wins():
     assert "progress_hooks" not in o
 
 
+def test_to_ydl_opts_errors_are_raised():
+    # CLI 기본값('only_download')이면 오류가 묻혀 받은 게 없는 채로 끝나고, 앱은 '이미 받음'으로 보인다
+    o = to_ydl_opts(DownloadOptions(), AppSettings(extra_args="-i"), folder="D", archive="A")
+    assert o["ignoreerrors"] is False
+
+
 def test_to_ydl_opts_audio_postprocessors():
     o = to_ydl_opts(DownloadOptions(kind="audio", embed_thumbnail=True), S, folder="D", archive="A")
     keys = [p["key"] for p in o["postprocessors"]]
