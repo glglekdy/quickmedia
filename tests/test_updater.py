@@ -31,3 +31,11 @@ def test_apply_command_passes_paths_verbatim():
     assert cmd[cmd.index("-WaitPid") + 1] == "42"
     assert cmd[cmd.index("-Setup") + 1] == str(setup)
     assert cmd[cmd.index("-Exe") + 1] == str(exe)
+
+
+def test_apply_script_waits_only_for_setup_process():
+    # Start-Process -Wait 는 설치 파일이 다시 띄운 앱까지 기다려서, 도우미가 앱이 꺼질 때까지 남는다.
+    from ytdl.updater import _APPLY_SCRIPT
+    setup_line = next(l for l in _APPLY_SCRIPT.splitlines() if l.startswith("$p = Start-Process"))
+    assert "-Wait" not in setup_line
+    assert "$p.WaitForExit()" in _APPLY_SCRIPT

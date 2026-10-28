@@ -131,7 +131,9 @@ def download(release: Release, progress: Callable[[int, int], None] | None = Non
 _APPLY_SCRIPT = r"""
 param([int]$WaitPid, [string]$Setup, [string]$Exe)
 Wait-Process -Id $WaitPid -Timeout 120 -ErrorAction SilentlyContinue
-$p = Start-Process -FilePath $Setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+$p = Start-Process -FilePath $Setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -PassThru
+# -Wait 는 설치 파일이 다시 띄운 앱까지 기다린다. 설치 파일 프로세스만 기다린다.
+$p.WaitForExit()
 # 성공하면 설치 파일의 [Run] 이 앱을 다시 띄운다. 실패하면 Inno 가 되돌려 둔 기존 앱을 띄운다.
 if ($p.ExitCode -ne 0 -and (Test-Path $Exe)) { Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe) }
 Remove-Item $Setup -Force -ErrorAction SilentlyContinue
