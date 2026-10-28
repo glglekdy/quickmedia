@@ -122,3 +122,37 @@ def test_icons_follow_saved_proxy(qapp, tmp_path):
     s.setValue("settings/proxy", "http://127.0.0.1:8080")
     w = mw.MainWindow(settings=s, data_dir=tmp_path)
     assert w.icons.proxy == "http://127.0.0.1:8080"
+
+
+def test_settings_change_applies(win):
+    win.settings_model.update(concurrency=4, proxy="http://p:1")
+    assert str(win.settings.value("settings/concurrency")) == "4" and win.settings.value("settings/proxy") == "http://p:1"
+    assert win.jobs.limit == 4 and win.icons.proxy == "http://p:1" and win.app_settings.concurrency == 4
+
+
+def test_menu_switches_page(win):
+    assert win.stack.currentWidget() is win.pages["download"]
+    win.sidebar.nav["settings"].click()
+    assert win.stack.currentWidget() is win.pages["login"]
+    win.sidebar.nav["network"].click()
+    assert win.stack.currentWidget() is win.pages["network"]
+    win.sidebar.nav["download"].click()
+    assert win.stack.currentWidget() is win.pages["download"]
+
+
+def test_switching_page_saves_pending_text(win):
+    win.sidebar.select("network")
+    win.pages["network"].proxy.setText("http://x:1")  # Enter 없이 바로 메뉴를 누름
+    win.sidebar.nav["download"].click()
+    assert win.app_settings.proxy == "http://x:1" and win.settings.value("settings/proxy") == "http://x:1"
+
+
+def test_close_saves_pending_text(win):
+    win.sidebar.select("advanced")
+    win.pages["advanced"].extra_args.setText("--no-mtime")
+    win.close()
+    assert win.app_settings.extra_args == "--no-mtime"
+
+
+def test_window_size(win):
+    assert (win.minimumWidth(), win.minimumHeight()) == (690, 480)

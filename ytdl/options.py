@@ -1,6 +1,6 @@
 """사용자가 고른 다운로드 옵션과 앱 설정. Qt 없이 동작한다.
 
-화면은 `DownloadOptions`(세부 옵션 패널)와 `AppSettings`(⚙ 설정 창)를 채우기만 하고,
+화면은 `DownloadOptions`(세부 옵션 패널)와 `AppSettings`(설정 화면)를 채우기만 하고,
 다운로드 작업은 `to_ydl_opts()`가 만든 yt-dlp 옵션 dict 를 받아 쓰기만 한다.
 """
 
@@ -63,7 +63,7 @@ class DownloadOptions:
 
 @dataclass
 class AppSettings:
-    """⚙ 설정 창 값."""
+    """설정 화면 값."""
     cookies: str = "none"
     cookie_browser: str = "firefox"
     cookie_file: str = ""
@@ -387,7 +387,7 @@ def _extra_args_error(text: str) -> str | None:
 
 
 def validate_settings(s: AppSettings) -> dict[str, str]:
-    """설정 창 값 오류. 키는 칸 이름, 값은 화면 문구."""
+    """설정 화면 값 오류. 키는 칸 이름, 값은 화면 문구."""
     errors: dict[str, str] = {}
     if s.rate_limit and parse_bytes(s.rate_limit) is None:
         errors["rate_limit"] = "속도 제한은 5M, 500K 처럼 써 주세요"

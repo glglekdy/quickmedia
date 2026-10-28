@@ -103,7 +103,7 @@ class SiteIcons(QObject):
         super().__init__()
         self.cache_dir = Path(cache_dir)
         self._fetch = fetch
-        self.proxy = ""  # 설정 창의 프록시. 메인 창이 맞춰 준다.
+        self.proxy = ""  # 설정 화면의 프록시. 메인 창이 맞춰 준다.
         self._max_age = max_age_days * 86400
         self._memory: dict[str, QPixmap] = {}
         self._tried: set[str] = set()  # 이번 실행에 받는 중이거나 실패한 곳

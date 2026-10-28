@@ -1,4 +1,7 @@
-"""메인 창: 링크 입력 · 형식 고르기 · 세부 옵션 · 다운로드 목록 · 저장 위치 독."""
+"""메인 창: 왼쪽 메뉴 | 화면(다운로드 · 설정 4개).
+
+다운로드 화면은 링크 입력 · 형식 고르기 · 세부 옵션 · 다운로드 목록 · 저장 위치 독.
+"""
 
 from __future__ import annotations
 
@@ -7,11 +10,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSettings, QSize, QStandardPaths, Qt
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSettings, QStandardPaths, Qt
 from PySide6.QtGui import QGuiApplication, QIcon, QPixmap
 from PySide6.QtWidgets import (
-    QButtonGroup, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QScrollArea, QVBoxLayout, QWidget,
+    QButtonGroup, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox,
+    QProgressBar, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from .app_info import NAME, SETTINGS
@@ -22,7 +25,8 @@ from .options import (
     matching_preset, options_from_dict, settings_from_dict, to_dict, to_ydl_opts, validate_options,
 )
 from .options_panel import OptionsPanel
-from .settings_dialog import SettingsDialog
+from .settings_pages import PAGES, SettingsModel, SettingsPage
+from .sidebar import Sidebar
 from .theme import ASSETS
 from .site import SiteIcons, display_name, domain_of
 
@@ -177,8 +181,8 @@ class MainWindow(QMainWindow):
     def __init__(self, settings: QSettings | None = None, data_dir: Path | None = None):
         super().__init__()
         self.setWindowTitle(NAME)
-        self.resize(640, 680)
-        self.setMinimumSize(520, 480)
+        self.resize(800, 680)
+        self.setMinimumSize(690, 480)
         self.settings = settings if settings is not None else QSettings(*SETTINGS)
         if data_dir is None:
             data_dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
@@ -213,7 +217,6 @@ class MainWindow(QMainWindow):
         root = QVBoxLayout(main)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
-        self.setCentralWidget(main)
 
         head = QVBoxLayout()
         head.setContentsMargins(28, 24, 28, 8)
@@ -223,14 +226,6 @@ class MainWindow(QMainWindow):
         crumb.setObjectName("crumb")
         title_row.addWidget(crumb)
         title_row.addStretch(1)
-        # 기호 글자(⚙ ▾)는 글꼴에 따라 네모로 나와서 그림을 쓴다
-        gear = QPushButton()
-        gear.setIcon(QIcon(str(ASSETS / "gear.svg")))
-        gear.setIconSize(QSize(18, 18))
-        gear.setObjectName("ghost")
-        gear.setToolTip("설정")
-        gear.clicked.connect(self.open_settings)
-        title_row.addWidget(gear)
         head.addLayout(title_row)
         hint = QLabel("링크를 붙여넣고 형식을 고른 뒤 다운로드를 누르세요.")
         hint.setObjectName("viewHint")
@@ -337,6 +332,24 @@ class MainWindow(QMainWindow):
         d.addWidget(open_btn)
         root.addWidget(dock)
 
+        self.settings_model = SettingsModel(self.app_settings, self)
+        self.settings_model.changed.connect(self._settings_changed)
+        self.stack = QStackedWidget()
+        self.pages: dict[str, QWidget] = {"download": main}
+        self.stack.addWidget(main)
+        for key, cls in PAGES.items():
+            self.pages[key] = cls(self.settings_model)
+            self.stack.addWidget(self.pages[key])
+        self.sidebar = Sidebar()
+        self.sidebar.page_changed.connect(self._show_page)
+        shell = QWidget()
+        row = QHBoxLayout(shell)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(0)
+        row.addWidget(self.sidebar)
+        row.addWidget(self.stack, 1)
+        self.setCentralWidget(shell)
+
     def _sync_format_row(self) -> None:
         """프리셋 버튼 선택과 세부 옵션 버튼 글자를 지금 값에 맞춘다."""
         key = matching_preset(self.opts)
@@ -372,13 +385,20 @@ class MainWindow(QMainWindow):
             self.folder_edit.setText(d)
             self.settings.setValue("folder", d)
 
-    def open_settings(self) -> None:
-        dialog = SettingsDialog(self.app_settings, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.app_settings = dialog.value()
-            self._write_group("settings", self.app_settings)
-            self.jobs.set_limit(self.app_settings.concurrency)
-            self.icons.proxy = self.app_settings.proxy
+    def _show_page(self, key: str) -> None:
+        self._leave_settings_page()
+        self.stack.setCurrentWidget(self.pages[key])
+
+    def _leave_settings_page(self) -> None:
+        page = self.stack.currentWidget()
+        if isinstance(page, SettingsPage):
+            page.leave()
+
+    def _settings_changed(self, s: AppSettings) -> None:
+        self.app_settings = s
+        self._write_group("settings", s)
+        self.jobs.set_limit(s.concurrency)
+        self.icons.proxy = s.proxy
 
     def _toggle_panel(self) -> None:
         show = self.panel.isHidden()
@@ -484,6 +504,7 @@ class MainWindow(QMainWindow):
             self.empty.show()
 
     def closeEvent(self, e) -> None:
+        self._leave_settings_page()
         # Windows 의 terminate() 는 finished 를 바로 내보내므로 먼저 표시해 둔다
         self._closing = True
         for job in self.jobs.running:
