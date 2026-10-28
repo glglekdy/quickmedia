@@ -1,10 +1,12 @@
-"""yt-dlp 로 한 건씩 받는 작업 스레드."""
+"""yt-dlp 로 한 건씩 받는 작업 스레드. 재생목록이면 항목만 펼쳐 알리고 끝난다."""
 
 from __future__ import annotations
 
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import yt_dlp
 from PySide6.QtCore import QThread, Signal
@@ -12,33 +14,64 @@ from PySide6.QtCore import QThread, Signal
 # exe 로 묶였을 때 함께 들어간 ffmpeg 위치
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
 
-FORMATS = {
-    "best": ("최고 화질", {
-        "format": "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b",
-        "merge_output_format": "mp4",
-    }),
-    "720p": ("720p", {
-        "format": "bv*[height<=720][ext=mp4]+ba[ext=m4a]/bv*[height<=720]+ba/b[height<=720]",
-        "merge_output_format": "mp4",
-    }),
-    "mp3": ("MP3 음원", {
-        "format": "ba/b",
-        "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3",
-                            "preferredquality": "192"}],
-    }),
-}
+FFMPEG_DIR = str(BASE_DIR) if (BASE_DIR / "ffmpeg.exe").exists() else None
+
+
+@dataclass
+class PlaylistEntry:
+    url: str
+    title: str
+    index: int
+
+
+@dataclass
+class PlaylistResult:
+    title: str
+    site_key: str
+    webpage_url: str
+    entries: list[PlaylistEntry]
+    skipped: int
+
+
+def playlist_entries(info: dict, is_archived: Callable[[dict], bool] = lambda e: False
+                     ) -> tuple[list[PlaylistEntry], int]:
+    """재생목록 결과에서 받을 항목. 순번이 없으면 원래 목록에서의 위치를 쓴다."""
+    entries: list[PlaylistEntry] = []
+    skipped = 0
+    for pos, entry in enumerate(info.get("entries") or [], start=1):
+        if not isinstance(entry, dict):
+            continue
+        url = entry.get("url") or entry.get("webpage_url")
+        if not url:
+            continue
+        if is_archived(entry):
+            skipped += 1
+            continue
+        entries.append(PlaylistEntry(url, entry.get("title") or url, entry.get("playlist_index") or pos))
+    return entries, skipped
+
+
+# 위에서부터 맞춰 본다. 쿠키 실패 메시지에도 "Sign in" 이 섞일 수 있어 쿠키가 먼저다.
+_ERRORS = [
+    (("unsupported url", "is not a valid url"), "지원하지 않는 링크예요"),
+    (("cookies database", "failed to decrypt", "cookie database"),
+     "브라우저 쿠키를 읽지 못했어요. 브라우저를 닫고 다시 시도하거나 cookies.txt 를 써 주세요"),
+    (("sign in", "login required", "private video", "members-only"),
+     "로그인이 필요한 영상이에요. ⚙ 설정에서 쿠키를 켜 보세요"),
+    (("video unavailable", "this video is not available"), "삭제되었거나 볼 수 없는 영상이에요"),
+    (("requested format is not available",), "고른 화질·형식이 없는 영상이에요. 세부 옵션을 바꿔 보세요"),
+    (("getaddrinfo", "timed out", "unable to connect", "proxyerror"), "인터넷 연결이나 프록시 설정을 확인해 주세요"),
+]
 
 
 def friendly_error(e: Exception) -> str:
     msg = str(e)
-    if "is not a valid URL" in msg or "Unsupported URL" in msg:
-        return "올바른 유튜브 링크가 아니에요"
-    if "Private video" in msg or "Sign in" in msg:
-        return "비공개이거나 로그인이 필요한 영상이에요"
-    if "Video unavailable" in msg:
-        return "삭제되었거나 볼 수 없는 영상이에요"
-    if "getaddrinfo" in msg or "timed out" in msg:
-        return "인터넷 연결을 확인해 주세요"
+    low = msg.lower()
+    if ("ffmpeg" in low or "ffprobe" in low) and ("not found" in low or "not installed" in low):
+        return "변환 도구(ffmpeg)를 찾지 못했어요"
+    for needles, text in _ERRORS:
+        if any(n in low for n in needles):
+            return text
     return msg.replace("ERROR: ", "")[:160]
 
 
@@ -47,10 +80,13 @@ class DownloadJob(QThread):
     progress = Signal(float, str)   # 퍼센트, 상태 문구
     finished_ok = Signal(str)       # 저장된 파일 경로
     failed = Signal(str)
+    site_found = Signal(str, str)   # extractor_key, webpage_url
+    expanded = Signal(object)       # PlaylistResult
+    skipped = Signal()              # 이미 받은 기록이 있어 받지 않음
 
-    def __init__(self, url: str, fmt: str, folder: str):
+    def __init__(self, url: str, ydl_opts: dict):
         super().__init__()
-        self.url, self.fmt, self.folder = url, fmt, folder
+        self.url, self.ydl_opts = url, ydl_opts
         self._file = ""
         # 영상·음성을 따로 받으면 스트림이 여러 개다. 전체를 하나의 진행률로 합친다.
         self._parts = 1
@@ -82,25 +118,31 @@ class DownloadJob(QThread):
                 self.progress.emit(100, "파일 정리 중…")
 
     def run(self) -> None:
-        opts = {
-            "outtmpl": str(Path(self.folder) / "%(title)s.%(ext)s"),
-            "progress_hooks": [self._hook],
-            "noplaylist": True,
-            "quiet": True,
-            "no_warnings": True,
-            "noprogress": True,
-            **FORMATS[self.fmt][1],
-        }
-        if (BASE_DIR / "ffmpeg.exe").exists():
-            opts["ffmpeg_location"] = str(BASE_DIR)
+        opts = {**self.ydl_opts, "progress_hooks": [self._hook]}
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(self.url, download=False)
+                if info is None:
+                    self.skipped.emit()
+                    return
+                site_key = info.get("extractor_key") or ""
+                page = info.get("webpage_url") or self.url
+                self.site_found.emit(site_key, page)
+                if info.get("_type") == "playlist":
+                    archived = ydl.in_download_archive if self.ydl_opts.get("download_archive") else (lambda e: False)
+                    entries, skipped = playlist_entries(info, archived)
+                    self.expanded.emit(PlaylistResult(
+                        title=info.get("title") or info.get("id") or self.url, site_key=site_key,
+                        webpage_url=page, entries=entries, skipped=skipped))
+                    return
                 self.titled.emit(info.get("title") or self.url)
                 self._parts = len(info.get("requested_formats") or []) or 1
                 info = ydl.process_ie_result(info, download=True)
+            downloads = (info or {}).get("requested_downloads") or []
+            if not downloads:
+                self.skipped.emit()
+                return
             # 병합·변환을 거친 최종 파일 경로
-            done = (info.get("requested_downloads") or [{}])[0].get("filepath")
-            self.finished_ok.emit(done or self._file)
+            self.finished_ok.emit(downloads[0].get("filepath") or self._file)
         except Exception as e:  # noqa: BLE001 - 사용자에게 보여 줄 문구로 바꾼다
             self.failed.emit(friendly_error(e))
