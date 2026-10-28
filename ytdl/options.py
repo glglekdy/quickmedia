@@ -9,6 +9,9 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass
 
+import yt_dlp
+from yt_dlp.utils import sanitize_filename
+
 QUALITIES = ("best", "2160", "1440", "1080", "720", "480", "360")
 CONTAINERS = ("mp4", "mkv", "webm")
 CODECS = ("auto", "h264", "vp9", "av1")
@@ -179,3 +182,146 @@ def changed_summary(opts: DownloadOptions) -> list[str]:
          or opts.playlist_folder or opts.skip_archived),
     ]
     return [name for name, changed in checks if changed]
+
+
+# ---------- yt-dlp 옵션으로 바꾸기 ----------
+
+@dataclass(frozen=True)
+class PlaylistContext:
+    """재생목록에서 펼친 항목 하나. 항목 작업은 영상 하나만 받으므로 재생목록 필드를 직접 넣는다."""
+    title: str
+    index: int
+    count: int
+
+
+_VCODECS = {"h264": "vcodec:h264", "vp9": "vcodec:vp9", "av1": "vcodec:av01"}
+_EXT_SORT = {"mp4": "ext:mp4:m4a", "webm": "ext:webm:webm"}
+
+
+def _template(settings: AppSettings) -> str:
+    if settings.name_template == "custom":
+        return settings.custom_template
+    return NAME_TEMPLATES.get(settings.name_template, NAME_TEMPLATES["title"])
+
+
+def _playlist_prefix(opts: DownloadOptions, playlist: PlaylistContext) -> str:
+    prefix = ""
+    if opts.playlist_folder:
+        folder = sanitize_filename(playlist.title).replace("%", "%%") or "playlist"
+        prefix += folder + "/"
+    if opts.number_prefix:
+        prefix += str(playlist.index).zfill(max(2, len(str(playlist.count)))) + " - "
+    return prefix
+
+
+def build_args(opts: DownloadOptions, settings: AppSettings, *, folder: str, archive: str,
+               playlist: PlaylistContext | None = None) -> list[str]:
+    """고른 값을 yt-dlp 명령줄 인자로. 후처리 순서 같은 세부 사항을 CLI 와 똑같이 맞추려고 인자를 거친다."""
+    template = _template(settings)
+    if playlist is not None:
+        template = _playlist_prefix(opts, playlist) + template
+    args = ["-P", folder, "-o", template]
+
+    if settings.cookies == "browser":
+        args += ["--cookies-from-browser", settings.cookie_browser]
+    elif settings.cookies == "file":
+        args += ["--cookies", settings.cookie_file]
+    if settings.proxy:
+        args += ["--proxy", settings.proxy]
+    if settings.rate_limit:
+        args += ["-r", settings.rate_limit]
+    args += ["-R", str(settings.retries)]
+    if settings.overwrite:
+        args.append("--force-overwrites")
+
+    if playlist is not None or opts.playlist == "single":
+        args.append("--no-playlist")
+    else:
+        args.append("--yes-playlist")
+        if opts.playlist_items:
+            args += ["-I", opts.playlist_items]
+    if opts.skip_archived:
+        args += ["--download-archive", archive]
+
+    if opts.kind == "audio":
+        quality = "0" if opts.audio_quality == "best" else f"{opts.audio_quality}K"
+        args += ["-x", "--audio-format", opts.audio_format, "--audio-quality", quality]
+    else:
+        sort = []
+        if opts.quality != "best":
+            sort.append(f"res:{opts.quality}")
+        if opts.codec in _VCODECS:
+            sort.append(_VCODECS[opts.codec])
+        if opts.container in _EXT_SORT:
+            sort.append(_EXT_SORT[opts.container])
+        args += ["-f", "bv*+ba/b"]
+        if sort:
+            args += ["-S", ",".join(sort)]
+        args += ["--merge-output-format", opts.container]
+
+    if opts.subs:
+        args.append("--write-subs")
+        if opts.auto_subs:
+            args.append("--write-auto-subs")
+        args += ["--sub-langs", "all,-live_chat" if opts.sub_langs == "all" else opts.sub_langs]
+        # 음원 파일에는 자막을 넣을 수 없어 파일로 남긴다
+        if opts.sub_mode == "embed" and opts.kind != "audio":
+            args.append("--embed-subs")
+        else:
+            args += ["--convert-subs", opts.sub_format]
+
+    if opts.embed_thumbnail:
+        args.append("--embed-thumbnail")
+    if opts.save_thumbnail:
+        args += ["--write-thumbnail", "--convert-thumbnails", "jpg"]
+    if opts.embed_metadata:
+        args.append("--embed-metadata")
+    if opts.embed_chapters:
+        args.append("--embed-chapters")
+    if opts.split_chapters:
+        args.append("--split-chapters")
+    if opts.section_start or opts.section_end:
+        args += ["--download-sections", f"*{opts.section_start or '0'}-{opts.section_end or 'inf'}",
+                 "--force-keyframes-at-cuts"]
+    return args
+
+
+def split_extra(text: str) -> list[str]:
+    """고급 옵션 칸을 인자로 나눈다. 따옴표로 묶을 수 있고, Windows 경로의 백슬래시는 그대로 둔다."""
+    parts: list[str] = []
+    current: list[str] = []
+    quote = ""
+    started = False
+    for ch in text:
+        if quote:
+            if ch == quote:
+                quote = ""
+            else:
+                current.append(ch)
+        elif ch in "\"'":
+            quote = ch
+            started = True
+        elif ch.isspace():
+            if started:
+                parts.append("".join(current))
+                current, started = [], False
+        else:
+            current.append(ch)
+            started = True
+    if started:
+        parts.append("".join(current))
+    return parts
+
+
+def to_ydl_opts(opts: DownloadOptions, settings: AppSettings, *, folder: str, archive: str,
+                ffmpeg_dir: str | None = None, playlist: PlaylistContext | None = None) -> dict:
+    """yt-dlp 옵션 dict. 고급 옵션은 맨 뒤에 붙여 같은 옵션이면 사용자 값이 이긴다.
+    진행률 훅은 다운로드 작업이 붙인다."""
+    argv = ["--ignore-config", *build_args(opts, settings, folder=folder, archive=archive, playlist=playlist),
+            *split_extra(settings.extra_args)]
+    ydl_opts = yt_dlp.parse_options(argv).ydl_opts
+    # 앱이 진행률을 그리고 재생목록을 직접 펼치려면 이 값들은 앱 것이어야 한다
+    ydl_opts.update(quiet=True, no_warnings=True, noprogress=True, extract_flat="in_playlist")
+    if ffmpeg_dir:
+        ydl_opts["ffmpeg_location"] = ffmpeg_dir
+    return ydl_opts
