@@ -121,7 +121,13 @@ class DownloadJob(QThread):
         opts = {**self.ydl_opts, "progress_hooks": [self._hook]}
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(self.url, download=False)
+                # yt-dlp 는 재생목록을 펼칠 때 받은 기록에 있는 항목을 말없이 뺀다.
+                # 몇 개를 건너뛰었는지 직접 세려고 펼치는 동안만 기록을 비워 둔다.
+                archive, ydl.archive = ydl.archive, set()
+                try:
+                    info = ydl.extract_info(self.url, download=False)
+                finally:
+                    ydl.archive = archive
                 if info is None:
                     self.skipped.emit()
                     return

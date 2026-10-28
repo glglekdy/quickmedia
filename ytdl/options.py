@@ -216,6 +216,10 @@ def _playlist_prefix(opts: DownloadOptions, playlist: PlaylistContext) -> str:
     return prefix
 
 
+def _embed_subs(opts: DownloadOptions) -> bool:
+    return opts.subs and opts.sub_mode == "embed" and opts.kind != "audio"
+
+
 def build_args(opts: DownloadOptions, settings: AppSettings, *, folder: str, archive: str,
                playlist: PlaylistContext | None = None) -> list[str]:
     """고른 값을 yt-dlp 명령줄 인자로. 후처리 순서 같은 세부 사항을 CLI 와 똑같이 맞추려고 인자를 거친다."""
@@ -262,15 +266,16 @@ def build_args(opts: DownloadOptions, settings: AppSettings, *, folder: str, arc
         args += ["--merge-output-format", opts.container]
 
     if opts.subs:
-        args.append("--write-subs")
         if opts.auto_subs:
             args.append("--write-auto-subs")
         args += ["--sub-langs", "all,-live_chat" if opts.sub_langs == "all" else opts.sub_langs]
         # 음원 파일에는 자막을 넣을 수 없어 파일로 남긴다
-        if opts.sub_mode == "embed" and opts.kind != "audio":
+        if _embed_subs(opts):
+            # --write-subs 를 함께 주면 yt-dlp 가 넣은 뒤에도 자막 파일을 남긴다.
+            # 일반 자막 받기는 to_ydl_opts 가 켠다.
             args.append("--embed-subs")
         else:
-            args += ["--convert-subs", opts.sub_format]
+            args += ["--write-subs", "--convert-subs", opts.sub_format]
 
     if opts.embed_thumbnail:
         args.append("--embed-thumbnail")
@@ -324,6 +329,9 @@ def to_ydl_opts(opts: DownloadOptions, settings: AppSettings, *, folder: str, ar
     ydl_opts = yt_dlp.parse_options(argv).ydl_opts
     # 앱이 진행률을 그리고 재생목록을 직접 펼치려면 이 값들은 앱 것이어야 한다
     ydl_opts.update(quiet=True, no_warnings=True, noprogress=True, extract_flat="in_playlist")
+    if _embed_subs(opts):
+        # --embed-subs 에 --write-auto-subs 가 붙으면 yt-dlp 가 일반 자막을 끈다
+        ydl_opts["writesubtitles"] = True
     if ffmpeg_dir:
         ydl_opts["ffmpeg_location"] = ffmpeg_dir
     return ydl_opts

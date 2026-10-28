@@ -40,3 +40,35 @@ def test_playlist_entries():
 
 def test_playlist_entries_empty():
     assert playlist_entries({}) == ([], 0)
+
+
+class _FakeYDL:
+    """yt-dlp 처럼 펼칠 때 받은 기록에 있는 항목을 말없이 뺀다."""
+
+    def __init__(self, opts):
+        self.archive = {"youtube b"} if opts.get("download_archive") else set()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def in_download_archive(self, entry):
+        return f"{entry['ie_key'].lower()} {entry['id']}" in self.archive
+
+    def extract_info(self, url, download=False):
+        entries = [{"url": f"https://y/{i}", "id": i, "ie_key": "Youtube", "title": i} for i in "abc"]
+        return {"_type": "playlist", "title": "p", "extractor_key": "YoutubeTab", "webpage_url": url,
+                "entries": [e for e in entries if not self.in_download_archive(e)]}
+
+
+def test_expand_counts_archived_entries(monkeypatch):
+    from ytdl import downloader
+    monkeypatch.setattr(downloader.yt_dlp, "YoutubeDL", _FakeYDL)
+    job = downloader.DownloadJob("https://y/list", {"download_archive": "a.txt"})
+    got = []
+    job.expanded.connect(got.append)
+    job.run()
+    (result,) = got
+    assert [e.url for e in result.entries] == ["https://y/a", "https://y/c"] and result.skipped == 1

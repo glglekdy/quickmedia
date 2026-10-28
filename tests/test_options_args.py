@@ -40,7 +40,7 @@ def test_audio():
 def test_subtitles():
     a = args(DownloadOptions(subs=True, sub_langs="all", auto_subs=True))
     assert a[a.index("--sub-langs") + 1] == "all,-live_chat"
-    assert {"--write-subs", "--write-auto-subs", "--embed-subs"} <= set(a)
+    assert {"--write-auto-subs", "--embed-subs"} <= set(a) and "--write-subs" not in a
     a = args(DownloadOptions(subs=True, sub_mode="file", sub_format="ass"))
     assert a[a.index("--convert-subs") + 1] == "ass" and "--embed-subs" not in a
     a = args(DownloadOptions(kind="audio", subs=True))  # 음원에는 넣을 수 없어 파일로
@@ -125,3 +125,17 @@ def test_playlist_items_spaces_removed():
     # 검사는 "1-10, 15" 를 받아 주므로 yt-dlp 에 넘길 때도 공백을 빼야 한다
     a = args(DownloadOptions(playlist="all", playlist_items="1-10, 15"))
     assert a[a.index("-I") + 1] == "1-10,15"
+
+
+def test_embedded_subs_leave_no_sub_files():
+    # --write-subs 와 --embed-subs 를 함께 주면 yt-dlp 가 자막 파일을 따로 남긴다
+    o = to_ydl_opts(DownloadOptions(subs=True, auto_subs=True), S, folder="D", archive="A")
+    (embed,) = [p for p in o["postprocessors"] if p["key"] == "FFmpegEmbedSubtitle"]
+    assert embed["already_have_subtitle"] is False
+    assert o["writesubtitles"] is True and o["writeautomaticsub"] is True
+
+
+def test_sub_files_mode_writes_manual_subs():
+    o = to_ydl_opts(DownloadOptions(subs=True, sub_mode="file"), S, folder="D", archive="A")
+    assert o["writesubtitles"] is True and not o["writeautomaticsub"]
+    assert not [p for p in o["postprocessors"] if p["key"] == "FFmpegEmbedSubtitle"]
