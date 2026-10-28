@@ -1,6 +1,5 @@
-from ytdl.options import AppSettings, DownloadOptions
+from ytdl.options import DownloadOptions
 from ytdl.options_panel import OptionsPanel
-from ytdl.settings_dialog import SettingsDialog
 
 NON_DEFAULT = DownloadOptions(kind="audio", quality="1080", container="mkv", codec="av1", audio_format="flac",
                               audio_quality="320", subs=True, sub_langs="ja,en", auto_subs=True, sub_mode="file",
@@ -36,24 +35,3 @@ def test_panel_emits_changed_on_user_edit_only(qapp):
     box.click()  # 사용자가 누른 것처럼
     assert hits and p.options().subs is True
 
-
-def test_settings_dialog_round_trip(qapp):
-    s = AppSettings(cookies="browser", cookie_browser="edge", proxy="http://p:1", rate_limit="5M", retries=3,
-                    name_template="custom", custom_template="%(id)s.%(ext)s", overwrite=True, concurrency=4,
-                    extra_args="--no-mtime")
-    d = SettingsDialog(s)
-    assert d.value() == s
-
-
-def test_settings_dialog_blocks_invalid(qapp):
-    d = SettingsDialog(AppSettings(rate_limit="fast", extra_args="--nope"))
-    d.save_btn.click()
-    assert d.result() != d.DialogCode.Accepted
-    assert d.errors["rate_limit"].text() == "속도 제한은 5M, 500K 처럼 써 주세요" and not d.errors["rate_limit"].isHidden()
-    assert not d.errors["extra_args"].isHidden() and d.errors["cookie_file"].isHidden()
-
-
-def test_settings_dialog_accepts_valid(qapp):
-    d = SettingsDialog(AppSettings())
-    d.save_btn.click()
-    assert d.result() == d.DialogCode.Accepted

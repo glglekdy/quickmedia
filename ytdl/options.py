@@ -401,7 +401,7 @@ def validate_settings(s: AppSettings) -> dict[str, str]:
 
 
 # 오류 키 → 그 오류를 일으키는 칸
-_ERROR_CAUSES = {
+ERROR_CAUSES = {
     "rate_limit": {"rate_limit"},
     "cookie_file": {"cookies", "cookie_file"},
     "custom_template": {"name_template", "custom_template"},
@@ -415,5 +415,5 @@ def update_settings(s: AppSettings, **fields) -> tuple[AppSettings, dict[str, st
     이미 저장된 다른 값이 지금은 틀려도(지워진 쿠키 파일 등) 바꾼 칸은 저장된다.
     """
     cand = dataclasses.replace(s, **fields)
-    errors = {k: msg for k, msg in validate_settings(cand).items() if _ERROR_CAUSES[k] & fields.keys()}
+    errors = {k: msg for k, msg in validate_settings(cand).items() if ERROR_CAUSES[k] & fields.keys()}
     return (s, errors) if errors else (cand, {})

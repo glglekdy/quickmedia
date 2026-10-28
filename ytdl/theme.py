@@ -150,8 +150,11 @@ QTabBar::tab:hover { color: $text; }
 QTabBar::tab:selected { color: $text; border-bottom: 2px solid $accent; }
 #optionsPanel { background: transparent; }
 #fieldError { color: $danger; font-size: 12px; }
+QLineEdit[invalid="true"] { border-color: $danger; }
+#savedBadge { color: $success; font-size: 12px; }
+#settingsCard { background: $card_bg; border: 1px solid $border; border-radius: 10px; }
 #cardSite { color: $muted; font-size: 11px; }
-QScrollArea, #queueHolder { background: $bg; border: none; }
+QScrollArea, #queueHolder, #settingsHolder { background: $bg; border: none; }
 #card { background: $card_bg; border: 1px solid $border; border-radius: 10px; }
 #cardTitle { font-weight: 500; }
 #cardStatus { color: $muted; font-size: 12px; }
