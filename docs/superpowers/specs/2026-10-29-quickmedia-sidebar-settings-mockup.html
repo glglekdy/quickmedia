@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuickMedia 메뉴·설정 시안</title>
+<!-- 2026-10-29 브레인스토밍에서 승인한 시안. 브라우저로 열면 메뉴·설정 칸을 눌러 볼 수 있다. -->
+<style>
+  :root { --bg-primary:#f5f5f7; --bg-secondary:#fff; --bg-tertiary:#e5e5e7; --border:#d1d1d6; --text-primary:#1d1d1f;
+          --text-secondary:#86868b; --accent:#0071e3; --success:#34c759; --error:#ff3b30; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg-primary:#1d1d1f; --bg-secondary:#2d2d2f; --bg-tertiary:#3d3d3f; --border:#424245; --text-primary:#f5f5f7;
+            --text-secondary:#86868b; --accent:#0a84ff; }
+  }
+  body { margin:0; padding:2rem; font-family:system-ui,-apple-system,sans-serif; background:var(--bg-primary);
+         color:var(--text-primary); line-height:1.5; }
+  h2 { font-size:1.5rem; font-weight:600; margin:0 0 .5rem; }
+  h3 { font-size:1.1rem; font-weight:600; margin:0 0 .25rem; }
+  .subtitle { color:var(--text-secondary); margin:0 0 1.5rem; }
+</style>
+</head>
+<body>
+<style>
+  /* 지금 앱(theme.py)의 색 토큰 그대로 */
+  .qm { --bg:#f5f5f5; --surface:#fff; --border:#e5e5e5; --text:#1f1f1f; --heading:#141414; --muted:#737373;
+        --btn:#ebebeb; --btn-hover:#e0e0e0; --dis-fg:#a3a3a3; --dis-bg:#f0f0f0; --input:#ebebeb; --input-focus:#fff;
+        --card:#fff; --track:#e5e5e5; --pct:#b91c1c; --accent:#dc2626; --danger:#dc2626; --success:#16a34a;
+        --titlebar:#f3f3f3; --nav-hover:#f0f0f0; }
+  .qm.dark { --bg:#141414; --surface:#1c1c1c; --border:#2e2e2e; --text:#e6e6e6; --heading:#f0f0f0; --muted:#8c8c8c;
+             --btn:#2c2c2c; --btn-hover:#333; --dis-fg:#5c5c5c; --dis-bg:#1f1f1f; --input:#2c2c2c; --input-focus:#2c2c2c;
+             --card:#232323; --track:#2c2c2c; --pct:#f87171; --accent:#dc2626; --danger:#ef4444; --success:#22c55e;
+             --titlebar:#202020; --nav-hover:#232323; }
+
+  .fw-top { display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem; }
+  .fw-top button { border:1px solid var(--border); background:var(--bg-secondary); color:var(--text-primary);
+                   border-radius:8px; padding:.4rem .8rem; cursor:pointer; font-size:.85rem; }
+  .fw-top label { font-size:.85rem; display:flex; align-items:center; gap:.35rem; cursor:pointer; }
+  .fw-wrap { display:grid; grid-template-columns:800px minmax(260px,1fr); gap:1.5rem; align-items:start; }
+  @media (max-width: 1200px) { .fw-wrap { grid-template-columns:1fr; } }
+  .fw-notes { background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:1rem 1.2rem; font-size:.88rem; }
+  .fw-notes h3 { font-size:.95rem; margin-bottom:.5rem; }
+  .fw-notes ul { margin:0 0 .8rem 1.1rem; }
+  .fw-notes li { margin:.25rem 0; }
+  .fw-notes .dim { color:var(--text-secondary); }
+
+  /* ---------- 앱 창 (실제 크기) ---------- */
+  .qm.q-win { width:800px; max-width:100%; height:680px; border-radius:8px; overflow:hidden; border:1px solid var(--border);
+              box-shadow:0 10px 30px rgba(0,0,0,.15); display:flex; flex-direction:column; background:var(--bg);
+              font-family:"Pretendard","Malgun Gothic","Segoe UI",sans-serif; font-size:13px; color:var(--text); line-height:1.4; }
+  .qm .q-tb { height:32px; flex-shrink:0; background:var(--titlebar); display:flex; align-items:center; gap:8px; padding:0 0 0 12px;
+              font-size:12px; color:var(--text); border-bottom:1px solid var(--border); }
+  .qm .q-tb i { width:14px; height:14px; border-radius:3px; background:#dc2626; }
+  .qm .q-tb .ctl { margin-left:auto; display:flex; }
+  .qm .q-tb .ctl span { width:46px; text-align:center; color:var(--muted); font-size:11px; }
+  .qm .q-body { flex:1; display:flex; min-height:0; }
+
+  /* 왼쪽 메뉴 */
+  .qm .q-side { width:168px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border);
+                padding:12px 8px; display:flex; flex-direction:column; gap:2px; user-select:none; }
+  .qm .q-nav { height:34px; padding:0 10px; border-radius:6px; display:flex; align-items:center; gap:10px; cursor:pointer;
+               position:relative; color:var(--text); font-weight:500; }
+  .qm .q-nav:hover { background:var(--nav-hover); }
+  .qm .q-nav svg { width:16px; height:16px; color:var(--muted); flex-shrink:0; }
+  .qm .q-nav.on { background:var(--btn); font-weight:600; }
+  .qm .q-nav.on svg { color:var(--text); }
+  .qm .q-nav.on::before { content:""; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:2px; background:var(--accent); }
+  .qm .q-kid { padding-left:36px; }
+  .qm .q-chev { margin-left:auto; width:14px !important; height:14px !important; transition:transform .2s cubic-bezier(.33,1,.68,1); }
+  .qm .q-grp.open .q-chev { transform:rotate(90deg); }
+  .qm .q-kids { display:grid; grid-template-rows:0fr; transition:grid-template-rows .2s cubic-bezier(.33,1,.68,1); }
+  .qm .q-grp.open .q-kids { grid-template-rows:1fr; }
+  .qm .q-kids > div { overflow:hidden; display:flex; flex-direction:column; gap:2px; padding-top:2px; }
+
+  /* 오른쪽 화면 */
+  .qm .q-main { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .qm .q-page { flex:1; min-height:0; display:flex; flex-direction:column; }
+  .qm .q-page[hidden] { display:none; }
+  .qm .q-scroll { flex:1; overflow:auto; padding:24px 28px; }
+  .qm .q-head { display:flex; align-items:baseline; gap:10px; }
+  .qm .q-title { font-size:22px; font-weight:600; color:var(--heading); }
+  .qm .q-saved { color:var(--success); font-size:12px; opacity:0; transition:opacity .2s; }
+  .qm .q-saved.show { opacity:1; }
+  .qm .q-desc { color:var(--muted); font-size:12px; margin-top:4px; }
+
+  .qm .q-box { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin-top:16px; }
+  .qm .q-grid { display:grid; grid-template-columns:112px minmax(0,400px); column-gap:16px; row-gap:14px; align-items:start; }
+  .qm .q-grid.wide { grid-template-columns:160px minmax(0,380px); }
+  .qm .q-lab { padding-top:8px; font-weight:500; }
+  .qm .q-hint { color:var(--muted); font-size:12px; margin-top:5px; }
+  .qm .q-err { color:var(--danger); font-size:12px; margin-top:5px; }
+  .qm .q-err[hidden] { display:none; }
+
+  .qm .q-in { font:inherit; font-weight:500; color:var(--text); background:var(--input); border:1px solid transparent; border-radius:6px;
+              padding:7px 10px; width:100%; box-sizing:border-box; outline:none; }
+  .qm .q-in::placeholder { color:var(--muted); font-weight:500; }
+  .qm .q-in:focus { border-color:var(--accent); background:var(--input-focus); }
+  .qm .q-in:disabled { color:var(--dis-fg); }
+  .qm .q-in:disabled::placeholder { color:var(--dis-fg); }
+  .qm .q-in.bad { border-color:var(--danger); }
+  .qm .q-in.short { width:140px; }
+  .qm .q-in.num { width:90px; }
+  .qm select.q-in { appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:28px;
+                    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238c8c8c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+                    background-repeat:no-repeat; background-position:right 10px center; }
+  .qm select.q-in.mid { width:180px; }
+  .qm .q-row { display:flex; gap:6px; align-items:center; }
+
+  .qm .q-btn { font:inherit; font-weight:500; color:var(--text); background:var(--btn); border:none; border-radius:6px; padding:7px 12px;
+               cursor:pointer; white-space:nowrap; }
+  .qm .q-btn:hover { background:var(--btn-hover); }
+  .qm .q-btn:disabled { color:var(--dis-fg); background:var(--dis-bg); cursor:default; }
+  .qm .q-btn.primary { background:var(--accent); color:#fff; font-weight:600; padding:7px 18px; }
+  .qm .q-btn.ghost { background:transparent; color:var(--muted); padding:4px 8px; }
+
+  .qm input[type=radio], .qm input[type=checkbox] { appearance:none; -webkit-appearance:none; margin:0; width:14px; height:14px; flex-shrink:0;
+              border:1px solid var(--dis-fg); background:var(--input-focus); cursor:pointer; }
+  .qm input[type=radio] { border-radius:50%; }
+  .qm input[type=radio]:checked { border:5px solid var(--accent); }
+  .qm input[type=checkbox] { border-radius:4px; }
+  .qm input[type=checkbox]:checked { background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/10px no-repeat; border-color:var(--accent); }
+  .qm .q-choice { display:flex; align-items:center; gap:8px; cursor:pointer; padding-top:7px; font-weight:500; }
+  .qm .q-sub { padding-left:22px; }
+
+  /* 다운로드 화면 (지금 메인 창 그대로, ⚙ 만 빠짐) */
+  .qm .d-head { padding:24px 28px 8px; }
+  .qm .d-form { padding:12px 28px 16px; display:flex; flex-direction:column; gap:10px; }
+  .qm .d-seg { background:var(--input); border-radius:6px; padding:3px; display:flex; gap:2px; }
+  .qm .d-seg span { padding:6px 14px; border-radius:4px; color:var(--muted); }
+  .qm .d-seg .on { background:var(--btn-hover); color:var(--text); font-weight:600; }
+  .qm .d-listhead { padding:4px 28px 6px; display:flex; align-items:center; color:var(--muted); font-size:12px; font-weight:500; }
+  .qm .d-list { flex:1; overflow:auto; padding:0 28px 16px; display:flex; flex-direction:column; gap:8px; }
+  .qm .d-job { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 14px 12px; display:flex; flex-direction:column; gap:6px; }
+  .qm .d-site { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11px; }
+  .qm .d-site i { width:16px; height:16px; border-radius:50%; background:#dc2626; color:#fff; font-style:normal; font-size:9px; font-weight:700;
+                  display:flex; align-items:center; justify-content:center; }
+  .qm .d-title { display:flex; justify-content:space-between; align-items:center; font-weight:500; }
+  .qm .d-pct { color:var(--pct); font-size:12px; font-weight:600; }
+  .qm .d-bar { height:6px; background:var(--track); border-radius:3px; overflow:hidden; }
+  .qm .d-bar b { display:block; height:100%; background:var(--accent); border-radius:3px; }
+  .qm .d-st { color:var(--muted); font-size:12px; }
+  .qm .d-st.ok { color:var(--success); }
+  .qm .d-st.err { color:var(--danger); }
+  .qm .d-dock { background:var(--surface); border-top:1px solid var(--border); padding:12px 28px; display:flex; align-items:center; gap:6px; }
+</style>
+
+<h2>새 창 시안: 왼쪽 메뉴 + 설정 4개</h2>
+<p class="subtitle">실제 크기(800 × 680)예요. 왼쪽 메뉴로 화면을 바꿔 보고, 설정 칸을 바꿔서 바로 저장되는 느낌도 확인해 보세요.
+  글자 칸은 다 쓰고 다른 곳을 누르거나 Enter 를 치면 저장돼요. 예를 들어 속도 제한에 '빠르게'라고 써 보세요.</p>
+<div class="fw-top">
+  <button type="button" onclick="qmToggleTheme()">라이트 / 다크 바꾸기</button>
+  <label><input type="checkbox" onchange="qmShowErrors(this.checked)"> 오류 문구 예시 한꺼번에 보기</label>
+</div>
+
+<div class="fw-wrap">
+<div class="qm q-win" id="qm">
+  <div class="q-tb"><i></i>QuickMedia<div class="ctl"><span>—</span><span>☐</span><span>✕</span></div></div>
+  <div class="q-body">
+
+    <nav class="q-side">
+      <div class="q-nav on" data-nav="download">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>다운로드</span>
+      </div>
+      <div class="q-grp">
+        <div class="q-nav q-parent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>설정</span>
+          <svg class="q-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="q-kids"><div>
+          <div class="q-nav q-kid" data-nav="login"><span>로그인</span></div>
+          <div class="q-nav q-kid" data-nav="network"><span>네트워크</span></div>
+          <div class="q-nav q-kid" data-nav="file"><span>파일</span></div>
+          <div class="q-nav q-kid" data-nav="advanced"><span>고급</span></div>
+        </div></div>
+      </div>
+    </nav>
+
+    <div class="q-main">
+
+      <!-- 다운로드 -->
+      <section class="q-page" data-page="download">
+        <div class="d-head">
+          <div class="q-title">QuickMedia</div>
+          <div class="q-desc">링크를 붙여넣고 형식을 고른 뒤 다운로드를 누르세요.</div>
+        </div>
+        <div class="d-form">
+          <div class="q-row"><input class="q-in" placeholder="영상·재생목록 링크를 붙여넣으세요 (유튜브 외 사이트도 돼요)"><button class="q-btn">붙여넣기</button></div>
+          <div class="q-row">
+            <div class="d-seg"><span class="on">최고 화질</span><span>720p</span><span>MP3 음원</span></div>
+            <button class="q-btn ghost">세부 옵션 ▾</button>
+            <span style="flex:1"></span>
+            <button class="q-btn primary">다운로드</button>
+          </div>
+        </div>
+        <div class="d-listhead">다운로드 목록<span style="flex:1"></span><button class="q-btn ghost">끝난 항목 지우기</button></div>
+        <div class="d-list">
+          <div class="d-job"><div class="d-site"><i>V</i>vimeo.com</div><div class="d-title">Vimeo 영상 제목이 여기에 들어가요<span class="d-pct">42%</span></div><div class="d-bar"><b style="width:42%"></b></div><div class="d-st">최고 화질 · MP4 · 받는 중 4.2MB/s</div></div>
+          <div class="d-job"><div class="d-site"><i>Y</i>youtube.com</div><div class="d-title">Me at the zoo<button class="q-btn ghost">열기</button></div><div class="d-bar"><b style="width:100%"></b></div><div class="d-st ok">최고 화질 · MP4 · 완료</div></div>
+          <div class="d-job"><div class="d-site"><i>Y</i>youtube.com</div><div class="d-title">삭제된 영상</div><div class="d-st err">실패 · 삭제되었거나 볼 수 없는 영상이에요</div></div>
+        </div>
+        <div class="d-dock"><span class="q-desc" style="margin:0">저장 위치</span><input class="q-in" readonly value="C:/Users/me/Downloads" style="flex:1;width:auto;color:var(--muted)"><button class="q-btn">변경</button><button class="q-btn">폴더 열기</button></div>
+      </section>
+
+      <!-- 로그인 -->
+      <section class="q-page" data-page="login" hidden>
+        <div class="q-scroll">
+          <div class="q-head"><div class="q-title">로그인</div><span class="q-saved">✓ 저장했어요</span></div>
+          <div class="q-desc">로그인해야 볼 수 있는 영상은 브라우저의 로그인 정보(쿠키)를 써서 받아요.</div>
+          <div class="q-box">
+            <div class="q-grid wide">
+              <label class="q-choice" style="grid-column:1 / span 2"><input type="radio" name="ck" value="none" checked>사용 안 함</label>
+              <label class="q-choice"><input type="radio" name="ck" value="browser">브라우저에서 가져오기</label>
+              <div><select class="q-in mid" id="ck-browser" disabled><option>Firefox</option><option>Edge</option><option>Chrome</option><option>Whale</option><option>Brave</option><option>Opera</option><option>Vivaldi</option><option>Chromium</option></select>
+                <div class="q-hint">Chrome·Edge 는 켜져 있으면 쿠키를 못 읽을 수 있어요</div></div>
+              <label class="q-choice"><input type="radio" name="ck" value="file">cookies.txt 파일</label>
+              <div><div class="q-row"><input class="q-in" id="ck-path" data-field="cookie" placeholder="파일을 고르세요" disabled><button class="q-btn" id="ck-find" disabled>찾기</button></div>
+                <div class="q-err" data-for="cookie" hidden></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 네트워크 -->
+      <section class="q-page" data-page="network" hidden>
+        <div class="q-scroll">
+          <div class="q-head"><div class="q-title">네트워크</div><span class="q-saved">✓ 저장했어요</span></div>
+          <div class="q-desc">인터넷 연결과 받는 속도에 관한 설정이에요.</div>
+          <div class="q-box">
+            <div class="q-grid">
+              <label class="q-lab">프록시</label>
+              <div><input class="q-in" data-field="proxy" placeholder="http://127.0.0.1:8080"><div class="q-err" data-for="proxy" hidden></div></div>
+              <label class="q-lab">속도 제한</label>
+              <div><input class="q-in short" data-field="rate" placeholder="예: 5M"><div class="q-hint">비워 두면 제한 없이 받아요. 5M 은 초당 5MB</div><div class="q-err" data-for="rate" hidden></div></div>
+              <label class="q-lab">재시도 횟수</label>
+              <div><input class="q-in num" type="number" min="0" max="50" value="10"></div>
+              <label class="q-lab">동시 다운로드</label>
+              <div><input class="q-in num" type="number" min="1" max="5" value="2"><div class="q-hint">한 번에 받는 영상 수 (1~5)</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 파일 -->
+      <section class="q-page" data-page="file" hidden>
+        <div class="q-scroll">
+          <div class="q-head"><div class="q-title">파일</div><span class="q-saved">✓ 저장했어요</span></div>
+          <div class="q-desc">받은 파일의 이름을 어떻게 지을지 정해요.</div>
+          <div class="q-box">
+            <div class="q-grid">
+              <label class="q-lab">파일 이름</label>
+              <div><select class="q-in mid" id="name-sel"><option value="title">제목</option><option value="title_id">제목 [ID]</option><option value="uploader_title">업로더 - 제목</option><option value="date_title">날짜 제목</option><option value="custom">직접 입력</option></select></div>
+              <label class="q-lab">직접 입력</label>
+              <div><input class="q-in" id="name-custom" data-field="custom" value="%(title)s.%(ext)s" disabled><div class="q-hint">yt-dlp 출력 템플릿 문법을 써요</div><div class="q-err" data-for="custom" hidden></div></div>
+              <label class="q-choice" style="grid-column:1 / span 2"><input type="checkbox">같은 이름의 파일이 있으면 덮어쓰기</label>
+              <div class="q-hint q-sub" style="grid-column:1 / span 2;margin-top:-10px">끄면 '제목 (1).mp4' 처럼 번호를 붙여 새로 받아요</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 고급 -->
+      <section class="q-page" data-page="advanced" hidden>
+        <div class="q-scroll">
+          <div class="q-head"><div class="q-title">고급</div><span class="q-saved">✓ 저장했어요</span></div>
+          <div class="q-desc">yt-dlp 명령줄 옵션을 그대로 넣어요. 다른 설정보다 우선해요.</div>
+          <div class="q-box">
+            <div class="q-grid">
+              <label class="q-lab">yt-dlp 옵션</label>
+              <div><input class="q-in" data-field="args" placeholder="예: --limit-rate 1M --no-mtime"><div class="q-err" data-for="args" hidden></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div class="fw-notes">
+  <h3>지금과 달라지는 점</h3>
+  <ul>
+    <li>창 기본 크기 640 × 680 → <b>800 × 680</b> (최소 폭 520 → 690). 오른쪽 내용 폭은 지금과 거의 같아요.</li>
+    <li>다운로드 화면은 오른쪽 위 ⚙ 만 빠지고 그대로예요. 다듬는 건 나중 차례.</li>
+    <li>설정 창(따로 뜨는 창)과 [취소] [저장]이 없어져요.</li>
+    <li>바꾸면 바로 저장되고, 제목 옆에 <span style="color:var(--success)">✓ 저장했어요</span>가 잠깐 떠요.</li>
+    <li>글자 칸은 다 쓰고 다른 곳을 누르거나 Enter 를 치면 저장. 틀리면 칸이 빨개지고 아래에 이유가 나와요. 그 화면을 떠나면 틀린 값은 버리고 저장된 값으로 돌아가요.</li>
+    <li>쿠키를 'cookies.txt 파일'로 바꿨는데 파일이 없으면, 파일을 고를 때까지 전에 쓰던 방식이 그대로 쓰여요.</li>
+    <li>동시 다운로드를 바꾸면 받는 중인 목록에도 바로 적용돼요(지금 [저장] 때와 같음).</li>
+  </ul>
+  <h3>안 바뀌는 것</h3>
+  <ul>
+    <li>색·글꼴·버튼 모양 (theme.py 그대로, 메뉴 스타일만 추가)</li>
+    <li>설정 항목과 검사 규칙</li>
+    <li class="dim">업데이트 창은 다음 차례까지 지금처럼 따로 떠요</li>
+  </ul>
+</div>
+</div>
+
+<script>
+(function () {
+  var root = document.getElementById("qm");
+  var SETTINGS = ["login", "network", "file", "advanced"];
+  var grp = root.querySelector(".q-grp");
+  var parent = root.querySelector(".q-parent");
+  var current = "download";
+  var savedVals = {};
+  if (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) root.classList.add("dark");
+
+  var rules = {
+    rate: function (v) { return !v.trim() || /^\s*\d+(\.\d+)?\s*[KMG]?i?B?\s*$/i.test(v) ? null : "속도 제한은 5M, 500K 처럼 써 주세요"; },
+    custom: function (v) { return v.trim() ? null : "파일 이름 규칙을 입력해 주세요"; },
+    args: function (v) {
+      if (/https?:\/\//.test(v)) return "고급 옵션에는 링크를 넣을 수 없어요";
+      var bad = v.split(/\s+/).filter(function (t) { return /^--/.test(t) && !/^--(limit-rate|no-mtime|retries|proxy|cookies|format|sleep-interval|embed-subs|no-playlist)\b/.test(t); })[0];
+      return bad ? "고급 옵션을 읽지 못했어요: no such option: " + bad : null;
+    },
+    cookie: function (v) { return v.trim() ? null : "쿠키 파일을 찾을 수 없어요"; },
+    proxy: function () { return null; }
+  };
+
+  function pageOf(el) { return el.closest(".q-page"); }
+  function flashSaved(el) {
+    var s = pageOf(el).querySelector(".q-saved");
+    if (!s) return;
+    s.classList.add("show");
+    clearTimeout(s._t);
+    s._t = setTimeout(function () { s.classList.remove("show"); }, 1500);
+  }
+  function setError(field, msg) {
+    var e = root.querySelector('.q-err[data-for="' + field + '"]');
+    var i = root.querySelector('[data-field="' + field + '"]');
+    e.textContent = msg || "";
+    e.hidden = !msg;
+    i.classList.toggle("bad", !!msg);
+  }
+  function refresh() {
+    var mode = root.querySelector('input[name="ck"]:checked').value;
+    root.querySelector("#ck-browser").disabled = mode !== "browser";
+    root.querySelector("#ck-path").disabled = root.querySelector("#ck-find").disabled = mode !== "file";
+    root.querySelector("#name-custom").disabled = root.querySelector("#name-sel").value !== "custom";
+    if (mode !== "file") setError("cookie", null);
+  }
+  function commit(inp) {
+    var f = inp.dataset.field;
+    if (inp.disabled) return;
+    var msg = rules[f](inp.value);
+    setError(f, msg);
+    if (!msg && inp.value !== savedVals[f]) { savedVals[f] = inp.value; flashSaved(inp); }
+  }
+  function revertInvalid(page) {
+    root.querySelectorAll('.q-page[data-page="' + page + '"] [data-field]').forEach(function (inp) {
+      if (inp.classList.contains("bad")) { inp.value = savedVals[inp.dataset.field]; setError(inp.dataset.field, null); }
+    });
+    if (page === "login" && root.querySelector("#ck-path").value === savedVals.cookie && !savedVals.cookie) {
+      // 파일이 없어서 저장되지 않은 '파일' 선택은 전에 쓰던 방식으로 되돌린다
+      var prev = root.querySelector('input[name="ck"][value="' + savedVals.ckmode + '"]');
+      if (prev) { prev.checked = true; refresh(); }
+    }
+  }
+  function show(page) {
+    if (page !== current) revertInvalid(current);
+    current = page;
+    root.querySelectorAll(".q-page").forEach(function (p) { p.hidden = p.dataset.page !== page; });
+    root.querySelectorAll("[data-nav]").forEach(function (n) { n.classList.toggle("on", n.dataset.nav === page); });
+    parent.classList.toggle("on", SETTINGS.indexOf(page) >= 0 && !grp.classList.contains("open"));
+  }
+
+  root.querySelectorAll("[data-field]").forEach(function (inp) {
+    savedVals[inp.dataset.field] = inp.value;
+    inp.addEventListener("blur", function () { commit(inp); });
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") inp.blur(); });
+  });
+  savedVals.ckmode = "none";
+
+  root.querySelectorAll('input[name="ck"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      refresh();
+      if (r.value === "file" && rules.cookie(root.querySelector("#ck-path").value)) {
+        setError("cookie", "쿠키 파일을 찾을 수 없어요");
+        return;   // 파일을 고를 때까지 저장하지 않는다
+      }
+      savedVals.ckmode = r.value;
+      flashSaved(r);
+    });
+  });
+  root.querySelector("#ck-find").addEventListener("click", function () {
+    var p = root.querySelector("#ck-path");
+    p.value = "C:\\Users\\me\\Downloads\\cookies.txt";
+    savedVals.cookie = p.value;
+    savedVals.ckmode = "file";
+    setError("cookie", null);
+    flashSaved(p);
+  });
+  root.querySelectorAll("select, input[type=number], input[type=checkbox]").forEach(function (el) {
+    if (!pageOf(el) || pageOf(el).dataset.page === "download") return;
+    el.addEventListener("change", function () {
+      refresh();
+      if (el.id === "name-sel" && el.value === "custom") commit(root.querySelector("#name-custom"));
+      flashSaved(el);
+    });
+  });
+
+  parent.addEventListener("click", function () {
+    if (grp.classList.contains("open")) { grp.classList.remove("open"); show(current); }
+    else { grp.classList.add("open"); show(SETTINGS.indexOf(current) >= 0 ? current : "login"); }
+  });
+  root.querySelectorAll("[data-nav]").forEach(function (n) {
+    n.addEventListener("click", function () {
+      var page = n.dataset.nav;
+      if (SETTINGS.indexOf(page) < 0) grp.classList.remove("open");
+      show(page);
+    });
+  });
+
+  window.qmToggleTheme = function () { root.classList.toggle("dark"); };
+  window.qmShowErrors = function (on) {
+    var samples = { rate: "빠르게", args: "--nope", custom: "" };
+    if (on) {
+      root.querySelector("#name-sel").value = "custom";
+      root.querySelector('input[name="ck"][value="file"]').checked = true;
+      refresh();
+      Object.keys(samples).forEach(function (f) {
+        var i = root.querySelector('[data-field="' + f + '"]');
+        i.value = samples[f];
+        setError(f, rules[f](i.value));
+      });
+      root.querySelector("#ck-path").value = "";
+      setError("cookie", "쿠키 파일을 찾을 수 없어요");
+    } else {
+      Object.keys(samples).concat(["cookie"]).forEach(function (f) {
+        root.querySelector('[data-field="' + f + '"]').value = savedVals[f];
+        setError(f, null);
+      });
+      root.querySelector("#name-sel").value = "title";
+      root.querySelector('input[name="ck"][value="' + savedVals.ckmode + '"]').checked = true;
+      refresh();
+    }
+  };
+})();
+</script>
+
+</body>
+</html>
