@@ -347,6 +347,7 @@ private val json = """{"tag_name":"v1.1.0","body":"notes","assets":[
       - uses: softprops/action-gh-release@v2
         with:
           files: android/QuickMedia-*.apk
+          # 설명은 build 작업이 release-notes/<태그>.md 로 이미 채웠다. 여기서는 파일만 더한다.
 ```
 
 파일 맨 위 주석에 APK 도 함께 올라간다고 한 줄 더한다. (스펙은 JDK 17 이라 했으나 AGP 9.5 는 JDK 17 이상이면 되고 로컬이 21 이므로 21 로 맞춘다.)
@@ -357,6 +358,7 @@ private val json = """{"tag_name":"v1.1.0","body":"notes","assets":[
 
 - [ ] **Step 1: 전체 확인** — 데스크톱 `python -m pytest -q` 통과, `./gradlew testDebugUnitTest assembleDebug` 통과, Task 7 Step 4 목록을 한 번 더 훑는다.
 - [ ] **Step 2: 업데이트 시험 준비** — 릴리스 키로 서명한 `-PappVersion=1.0.99` APK 를 에뮬레이터에 설치(디버그 앱은 먼저 지운다). 에뮬레이터는 x86_64 라 arm64 전용 릴리스 APK 가 설치되지 않으면, 이 시험용 빌드에만 `-PextraAbi=x86_64` 로 x86_64 를 더한다(`app/build.gradle.kts` 에서 속성이 있을 때만 abiFilters 에 추가).
-- [ ] **Step 3: 병합과 태그 (사용자 확인 후)** — `android-app` 을 `main` 에 병합해 push, `git tag v1.1.0 && git push origin v1.1.0`. `gh run watch` 로 두 작업 성공, `gh release view v1.1.0` 에 `QuickMedia-Setup-1.1.0.exe` 와 `QuickMedia-1.1.0.apk`.
-- [ ] **Step 4: 실제 업데이트** — 에뮬레이터의 1.0.99 앱을 켜면 "새 버전 1.1.0" → 지금 업데이트 → 출처 허용 → 설치 → 설정 화면 버전 1.1.0. (x86_64 에뮬레이터에서는 arm64 APK 가 "호환되지 않음"으로 실패할 수 있다. 그 경우 받기·검증·설치 요청까지 확인하고, 실제 덮어 설치는 사용자 폰에서 확인해 달라고 한다.)
-- [ ] **Step 5: 데스크톱 업데이트 영향 없음** — 데스크톱 1.0.1 이 1.1.0 설치 파일을 고르는지 `python -c "from ytdl.updater import pick_setup_asset; ..."` 로 v1.1.0 자산 목록에 대해 확인.
+- [ ] **Step 3: 업데이트 내용 쓰기** — `release-notes/v1.1.0.md` 를 직접 쓴다. 자동 생성("Full Changelog", 커밋 목록) 금지. 사용자 눈높이의 한국어로 `## 새 기능` / `## 고친 점` 아래 짧은 항목들: 안드로이드 앱 첫 버전(받는 곳, 할 수 있는 것, 64비트 안드로이드 10 이상, 처음 설치 방법은 README 안내), 그 밖에 v1.0.1 이후 데스크톱 변경이 있으면 그것. 앱 업데이트 창에 그대로 보이므로 짧게. 커밋.
+- [ ] **Step 4: 병합과 태그 (사용자 확인 후)** — `android-app` 을 `main` 에 병합해 push, `git tag v1.1.0 && git push origin v1.1.0`. `gh run watch` 로 두 작업 성공, `gh release view v1.1.0` 에 `QuickMedia-Setup-1.1.0.exe` 와 `QuickMedia-1.1.0.apk`.
+- [ ] **Step 5: 실제 업데이트** — 에뮬레이터의 1.0.99 앱을 켜면 "새 버전 1.1.0" → 지금 업데이트 → 출처 허용 → 설치 → 설정 화면 버전 1.1.0. (x86_64 에뮬레이터에서는 arm64 APK 가 "호환되지 않음"으로 실패할 수 있다. 그 경우 받기·검증·설치 요청까지 확인하고, 실제 덮어 설치는 사용자 폰에서 확인해 달라고 한다.)
+- [ ] **Step 6: 데스크톱 업데이트 영향 없음** — 데스크톱 1.0.1 이 1.1.0 설치 파일을 고르는지 `python -c "from ytdl.updater import pick_setup_asset; ..."` 로 v1.1.0 자산 목록에 대해 확인.
