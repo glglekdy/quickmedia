@@ -64,3 +64,12 @@ def test_select_from_code(bar):
 def test_nav_hover_token():
     from ytdl import theme
     assert theme.LIGHT["nav_hover"] == "#f0f0f0" and theme.DARK["nav_hover"] == "#232323"
+
+
+def test_sidebar_is_garbage_collected(qapp):
+    import gc
+    import weakref
+    from ytdl.sidebar import Sidebar
+    ref = weakref.ref(Sidebar())
+    gc.collect()
+    assert ref() is None

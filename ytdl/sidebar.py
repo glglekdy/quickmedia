@@ -29,6 +29,7 @@ class NavItem(QAbstractButton):
     def __init__(self, text: str, icon: str | None = None, chevron: bool = False, parent=None):
         super().__init__(parent)
         self.setText(text)
+        self.key = ""  # Sidebar 가 정한다
         self.setCheckable(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedHeight(_ITEM_H)
@@ -122,7 +123,9 @@ class Sidebar(QWidget):
         box.addStretch(1)
 
         for key, item in self.nav.items():
-            item.clicked.connect(lambda _=False, k=key: self._on_click(k))
+            # lambda 로 self 를 붙잡으면 메뉴가 지워지지 않고 앱이 끝날 때 죽으므로 bound method 로 잇는다
+            item.key = key
+            item.clicked.connect(self._on_item_clicked)
 
         self.anim = QParallelAnimationGroup(self)
         self._height_anim = QPropertyAnimation(self._children, b"maximumHeight", self)
@@ -142,7 +145,8 @@ class Sidebar(QWidget):
         if changed:
             self.page_changed.emit(key)
 
-    def _on_click(self, key: str) -> None:
+    def _on_item_clicked(self) -> None:
+        key = self.sender().key
         if key != "settings":
             self.select(key)
         elif self.expanded:

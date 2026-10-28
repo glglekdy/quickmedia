@@ -53,6 +53,7 @@ class SettingsPage(QWidget):
         self.model = model
         self.errors: dict[str, QLabel] = {}
         self._loading = False
+        self._fields_of: dict[QObject, tuple[str, ...]] = {}
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -103,7 +104,7 @@ class SettingsPage(QWidget):
 
         self._build()
         for name, fields in self.text_groups.items():
-            getattr(self, name).editingFinished.connect(lambda f=fields: self._commit(*f))
+            self._watch(getattr(self, name), "editingFinished", *fields)
         self.load(model.value)
 
     # 화면마다 채우는 곳
@@ -121,6 +122,18 @@ class SettingsPage(QWidget):
         """켜고 끄는 규칙."""
 
     # 틀
+    def _watch(self, widget: QObject, signal: str, *fields: str) -> None:
+        """widget 의 signal 이 오면 fields 를 저장한다.
+
+        lambda 로 self 를 붙잡으면 화면이 지워지지 않고 앱이 끝날 때 죽으므로 bound method 로 잇는다.
+        """
+        self._fields_of[widget] = fields
+        getattr(widget, signal).connect(self._on_edit)
+
+    def _on_edit(self, *_) -> None:
+        self._refresh()
+        self._commit(*self._fields_of[self.sender()])
+
     def _row(self, label: QWidget | str, control: QWidget | None = None, hint: str = "",
              error: str | None = None) -> None:
         r = self._grid.rowCount()
@@ -208,7 +221,7 @@ class LoginPage(SettingsPage):
         self.browser = QComboBox()
         for key in BROWSERS:
             self.browser.addItem(_BROWSER_LABELS[key], key)
-        self.browser.currentIndexChanged.connect(lambda *_: self._commit("cookies", "cookie_browser", "cookie_file"))
+        self._watch(self.browser, "currentIndexChanged", "cookies", "cookie_browser", "cookie_file")
 
         path_row = QWidget()
         box = QHBoxLayout(path_row)
@@ -272,11 +285,11 @@ class NetworkPage(SettingsPage):
         self.retries = QSpinBox()
         self.retries.setRange(0, 50)
         self.retries.setFixedWidth(90)
-        self.retries.valueChanged.connect(lambda *_: self._commit("retries"))
+        self._watch(self.retries, "valueChanged", "retries")
         self.concurrency = QSpinBox()
         self.concurrency.setRange(1, 5)
         self.concurrency.setFixedWidth(90)
-        self.concurrency.valueChanged.connect(lambda *_: self._commit("concurrency"))
+        self._watch(self.concurrency, "valueChanged", "concurrency")
 
         self._row("프록시", self.proxy)
         self._row("속도 제한", self.rate_limit, "비워 두면 제한 없이 받아요. 5M 은 초당 5MB", error="rate_limit")
@@ -304,11 +317,11 @@ class FilePage(SettingsPage):
         self.template = QComboBox()
         for label, key in _TEMPLATE_ITEMS:
             self.template.addItem(label, key)
-        self.template.currentIndexChanged.connect(self._on_template)
+        self._watch(self.template, "currentIndexChanged", "name_template", "custom_template")
         self.custom_template = QLineEdit()
         self.custom_template.setMinimumWidth(400)
         self.overwrite = QCheckBox("같은 이름의 파일이 있으면 덮어쓰기")
-        self.overwrite.toggled.connect(lambda *_: self._commit("overwrite"))
+        self._watch(self.overwrite, "toggled", "overwrite")
 
         self._row("파일 이름", self.template)
         self._row("직접 입력", self.custom_template, "yt-dlp 출력 템플릿 문법을 써요", error="custom_template")
@@ -325,10 +338,6 @@ class FilePage(SettingsPage):
 
     def _refresh(self, *_) -> None:
         self.custom_template.setEnabled(self.template.currentData() == "custom")
-
-    def _on_template(self, *_) -> None:
-        self._refresh()
-        self._commit("name_template", "custom_template")
 
 
 class AdvancedPage(SettingsPage):

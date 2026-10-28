@@ -126,3 +126,14 @@ def test_stale_saved_error_hidden_until_edited(qapp):
     # 이미 틀린 저장값은 건드리기 전에는 보여 주지 않는다
     _, p = make(AppSettings(rate_limit="fast"))
     assert p["network"].errors["rate_limit"].isHidden()
+
+
+def test_pages_are_garbage_collected(qapp):
+    # self 를 붙잡는 lambda 로 연결하면 화면이 안 지워지고, 앱이 끝날 때 QApplication 보다 늦게 지워지며 죽는다
+    import gc
+    import weakref
+    model, pages = make()
+    refs = [weakref.ref(p) for p in pages.values()] + [weakref.ref(model)]
+    del model, pages
+    gc.collect()
+    assert [r() for r in refs] == [None] * len(refs)
