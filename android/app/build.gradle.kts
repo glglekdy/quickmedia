@@ -6,7 +6,9 @@ plugins {
 // 릴리즈 태그(v1.1.0)를 -PappVersion=1.1.0 으로 받는다. versionCode 는 1.1.0 → 10100.
 val appVersion = (findProperty("appVersion") as String?) ?: "0.0.0-dev"
 val versionParts = Regex("""^(\d+)\.(\d+)\.(\d+)""").find(appVersion)?.destructured
-val appVersionCode = versionParts?.let { (a, b, c) -> a.toInt() * 10000 + b.toInt() * 100 + c.toInt() } ?: 1
+// 버전이 없으면(0.0.0-dev) 1. versionCode 는 0 이 될 수 없다.
+val appVersionCode = versionParts?.let { (a, b, c) -> a.toInt() * 10000 + b.toInt() * 100 + c.toInt() }
+    ?.takeIf { it > 0 } ?: 1
 
 android {
     namespace = "com.glglekdy.quickmedia"
