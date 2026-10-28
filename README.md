@@ -15,7 +15,7 @@
 - 유튜브 외 yt-dlp 지원 사이트, 카드에 사이트 아이콘과 이름 표시
 - 새 버전이 나오면 앱이 알려 주고 스스로 업데이트
 
-> **유튜브 다운로더를 쓰던 분**: 앱에서 업데이트하면 QuickMedia 설치 화면이 떠요. 설치를 마치면 옛 파일(`YoutubeDownloader.exe`)은 자동으로 지워지고 저장 위치 같은 설정은 그대로예요. 옛 바로가기는 지우고 새로 생긴 QuickMedia 바로가기를 쓰세요.
+> **유튜브 다운로더를 쓰던 분**: 옛 앱은 QuickMedia로 자동 업데이트되지 않아요. 위 링크에서 설치 파일을 받아 설치하세요. 저장 위치 같은 설정은 처음 실행할 때 그대로 옮겨져요. 옛 `YoutubeDownloader.exe`와 바로가기는 지워도 돼요.
 
 ## 개발
 
@@ -33,8 +33,8 @@ python -m pytest     # 테스트
 `v*` 태그를 push 하면 GitHub Actions가 설치 파일을 빌드해 릴리즈로 올리고, 설치된 앱은 다음 실행 때 업데이트돼요.
 
 ```
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-저장소 이름을 `quickmedia`로 바꾼 다음 첫 QuickMedia 태그를 push 하세요. 그래야 옛 앱이 옛 주소로 확인해도 GitHub가 새 저장소로 넘겨줘요.
+앱은 `glglekdy/quickmedia`에서 새 버전을 확인해요. 저장소 이름을 `quickmedia`로 바꾼 다음 태그를 push 하세요.

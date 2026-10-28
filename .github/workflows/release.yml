@@ -2,7 +2,7 @@
 # 설치된 앱은 시작할 때 releases/latest 를 보고 새 설치 파일로 스스로 업데이트한다.
 # 옛 유튜브 다운로더는 릴리즈의 첫 .exe 를 받으므로 exe 는 설치 파일 하나만 올린다.
 #
-#   git tag v1.0.1 && git push origin v1.0.1
+#   git tag v1.0.0 && git push origin v1.0.0
 
 name: release
 
