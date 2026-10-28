@@ -9,7 +9,7 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QRadioButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget,
+    QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from .options import BROWSERS, ERROR_CAUSES, AppSettings, update_settings
@@ -93,7 +93,7 @@ class SettingsPage(QWidget):
         self._grid.setHorizontalSpacing(12)
         self._grid.setVerticalSpacing(14)
         self._grid.setColumnMinimumWidth(0, self.label_width)
-        self._grid.setColumnStretch(2, 1)
+        self._grid.setColumnStretch(1, 1)
         col.addWidget(card)
         col.addStretch(1)
 
@@ -143,7 +143,9 @@ class SettingsPage(QWidget):
         cell.setSpacing(4)
         if control is not None:
             control.setMaximumWidth(400)
-            cell.addWidget(control, 0, Qt.AlignmentFlag.AlignLeft)
+            # 글자 칸처럼 늘어나는 칸은 400 까지 늘리고, 나머지는 제 크기로 왼쪽에
+            grows = control.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Expanding
+            cell.addWidget(control, 0, Qt.AlignmentFlag(0) if grows else Qt.AlignmentFlag.AlignLeft)
             # 이름을 입력 칸 글자 높이에 맞춘다
             label.setMinimumHeight(control.sizeHint().height())
         if hint:
@@ -232,7 +234,7 @@ class LoginPage(SettingsPage):
         self.browse_btn = QPushButton("찾기")
         self.browse_btn.clicked.connect(self._browse)
         box.addWidget(self.browse_btn)
-        path_row.setMinimumWidth(400)
+        path_row.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self._row(self.cookie_none)
         self._row(self.cookie_browser, self.browser, "Chrome·Edge 는 켜져 있으면 쿠키를 못 읽을 수 있어요")
@@ -278,7 +280,6 @@ class NetworkPage(SettingsPage):
     def _build(self) -> None:
         self.proxy = QLineEdit()
         self.proxy.setPlaceholderText("http://127.0.0.1:8080")
-        self.proxy.setMinimumWidth(400)
         self.rate_limit = QLineEdit()
         self.rate_limit.setPlaceholderText("예: 5M")
         self.rate_limit.setFixedWidth(160)
@@ -319,7 +320,6 @@ class FilePage(SettingsPage):
             self.template.addItem(label, key)
         self._watch(self.template, "currentIndexChanged", "name_template", "custom_template")
         self.custom_template = QLineEdit()
-        self.custom_template.setMinimumWidth(400)
         self.overwrite = QCheckBox("같은 이름의 파일이 있으면 덮어쓰기")
         self._watch(self.overwrite, "toggled", "overwrite")
 
@@ -349,7 +349,6 @@ class AdvancedPage(SettingsPage):
     def _build(self) -> None:
         self.extra_args = QLineEdit()
         self.extra_args.setPlaceholderText("예: --limit-rate 1M --no-mtime")
-        self.extra_args.setMinimumWidth(400)
         self._row("yt-dlp 옵션", self.extra_args, error="extra_args")
 
     def _read(self) -> dict:

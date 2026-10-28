@@ -137,3 +137,25 @@ def test_pages_are_garbage_collected(qapp):
     del model, pages
     gc.collect()
     assert [r() for r in refs] == [None] * len(refs)
+
+
+@pytest.mark.parametrize("width", [522, 632])  # 창 최소 폭 690, 기본 폭 800 에서 메뉴 168 을 뺀 폭
+def test_pages_fit_without_horizontal_scroll(qapp, width):
+    from PySide6.QtWidgets import QScrollArea
+    _, pages = make()
+    for page in pages.values():
+        page.resize(width, 600)
+        page.show()
+        qapp.processEvents()
+        assert not page.findChild(QScrollArea).horizontalScrollBar().isVisible(), page.title
+        page.hide()
+
+
+def test_wide_fields_grow_to_400(qapp):
+    _, pages = make()
+    page = pages["network"]
+    page.resize(632, 600)
+    page.show()
+    qapp.processEvents()
+    assert page.proxy.width() == 400
+    page.hide()
