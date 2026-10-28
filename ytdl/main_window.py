@@ -189,8 +189,10 @@ class MainWindow(QMainWindow):
         self.opts = options_from_dict(self._read_group("options", DownloadOptions),
                                       legacy_format=self.settings.value("format"))
         self.app_settings = settings_from_dict(self._read_group("settings", AppSettings))
+        self.icons.proxy = self.app_settings.proxy
         self.jobs: JobQueue[DownloadJob] = JobQueue(self.app_settings.concurrency, self._start_job)
         self._cards: dict[DownloadJob, JobCard] = {}
+        self._closing = False
         self._build_ui()
         self.panel.set_options(self.opts)
         self._sync_format_row()
@@ -376,6 +378,7 @@ class MainWindow(QMainWindow):
             self.app_settings = dialog.value()
             self._write_group("settings", self.app_settings)
             self.jobs.set_limit(self.app_settings.concurrency)
+            self.icons.proxy = self.app_settings.proxy
 
     def _toggle_panel(self) -> None:
         show = self.panel.isHidden()
@@ -448,6 +451,8 @@ class MainWindow(QMainWindow):
             self._on_expanded(self._cards[job], job, result)
 
     def _job_finished(self) -> None:
+        if self._closing:
+            return  # 닫는 중에 끝난 작업 자리에 대기 중인 작업을 시작하지 않는다
         job = self.sender()
         self.jobs.done(job)
         self._cards.pop(job, None)
@@ -479,6 +484,8 @@ class MainWindow(QMainWindow):
             self.empty.show()
 
     def closeEvent(self, e) -> None:
+        # Windows 의 terminate() 는 finished 를 바로 내보내므로 먼저 표시해 둔다
+        self._closing = True
         for job in self.jobs.running:
             if job.isRunning():
                 job.terminate()

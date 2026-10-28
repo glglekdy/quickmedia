@@ -206,11 +206,24 @@ def _template(settings: AppSettings) -> str:
     return NAME_TEMPLATES.get(settings.name_template, NAME_TEMPLATES["title"])
 
 
+_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+
+
+def _safe_folder(title: str) -> str:
+    """재생목록 제목으로 만든 폴더 이름. 제목은 남이 정한 값이라 저장 폴더 밖을 가리키면 안 된다."""
+    # Windows 는 끝의 점·공백을 버리므로 ".." 같은 이름은 여기서 비게 된다
+    folder = sanitize_filename(title).strip().rstrip(" .")
+    if not folder:
+        return "playlist"
+    if folder.split(".")[0].upper() in _RESERVED:
+        folder = "_" + folder
+    return folder
+
+
 def _playlist_prefix(opts: DownloadOptions, playlist: PlaylistContext) -> str:
     prefix = ""
     if opts.playlist_folder:
-        folder = sanitize_filename(playlist.title).replace("%", "%%") or "playlist"
-        prefix += folder + "/"
+        prefix += _safe_folder(playlist.title).replace("%", "%%") + "/"
     if opts.number_prefix:
         prefix += str(playlist.index).zfill(max(2, len(str(playlist.count)))) + " - "
     return prefix
@@ -268,7 +281,8 @@ def build_args(opts: DownloadOptions, settings: AppSettings, *, folder: str, arc
     if opts.subs:
         if opts.auto_subs:
             args.append("--write-auto-subs")
-        args += ["--sub-langs", "all,-live_chat" if opts.sub_langs == "all" else opts.sub_langs]
+        langs = opts.sub_langs.replace(" ", "")
+        args += ["--sub-langs", "all,-live_chat" if langs == "all" else langs]
         # 음원 파일에는 자막을 넣을 수 없어 파일로 남긴다
         if _embed_subs(opts):
             # --write-subs 를 함께 주면 yt-dlp 가 넣은 뒤에도 자막 파일을 남긴다.
@@ -342,6 +356,8 @@ def to_ydl_opts(opts: DownloadOptions, settings: AppSettings, *, folder: str, ar
 def validate_options(opts: DownloadOptions) -> dict[str, str]:
     """패널 값 오류. 키는 칸 이름, 값은 화면 문구."""
     errors: dict[str, str] = {}
+    if opts.kind == "video" and opts.container == "webm" and opts.codec == "h264":
+        errors["codec"] = "WEBM 에는 H.264 를 넣을 수 없어요. 코덱이나 파일 형식을 바꿔 주세요"
     if opts.section_start or opts.section_end:
         start = parse_duration(opts.section_start) if opts.section_start else 0
         end = parse_duration(opts.section_end) if opts.section_end else float("inf")

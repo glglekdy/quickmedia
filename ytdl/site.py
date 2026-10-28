@@ -61,10 +61,12 @@ def letter_of(name: str) -> str:
     return name[:1].upper() or "?"
 
 
-def fetch_bytes(url: str) -> bytes | None:
+def fetch_bytes(url: str, proxy: str = "") -> bytes | None:
+    """프록시를 설정한 사람은 아이콘도 프록시로 받는다."""
+    handlers = [urllib.request.ProxyHandler({"http": proxy, "https": proxy})] if proxy else []
     try:
         req = urllib.request.Request(url, headers={"User-Agent": f"{NAME}/{__version__}"})
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.build_opener(*handlers).open(req, timeout=5) as resp:
             data = resp.read(_MAX_BYTES + 1)
     except Exception:  # noqa: BLE001 - 아이콘은 없어도 그만이다
         return None
@@ -96,11 +98,12 @@ class _Fetch(QRunnable):
 class SiteIcons(QObject):
     ready = Signal(str, QPixmap)
 
-    def __init__(self, cache_dir: Path, fetch: Callable[[str], bytes | None] = fetch_bytes,
+    def __init__(self, cache_dir: Path, fetch: Callable[[str], bytes | None] | None = None,
                  max_age_days: int = 30):
         super().__init__()
         self.cache_dir = Path(cache_dir)
         self._fetch = fetch
+        self.proxy = ""  # 설정 창의 프록시. 메인 창이 맞춰 준다.
         self._max_age = max_age_days * 86400
         self._memory: dict[str, QPixmap] = {}
         self._tried: set[str] = set()  # 이번 실행에 받는 중이거나 실패한 곳
@@ -119,7 +122,9 @@ class SiteIcons(QObject):
                 return pix
         if host and host not in self._tried:
             self._tried.add(host)
-            QThreadPool.globalInstance().start(_Fetch(host, self._fetch, self._relay))
+            proxy = self.proxy
+            fetch = self._fetch or (lambda url: fetch_bytes(url, proxy=proxy))
+            QThreadPool.globalInstance().start(_Fetch(host, fetch, self._relay))
         return self.fallback(host)
 
     def fallback(self, host: str) -> QPixmap:

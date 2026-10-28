@@ -100,3 +100,25 @@ def test_close_stops_every_running_job(win, monkeypatch):
     running = win.jobs.running
     win.close()
     assert stopped == running
+
+
+def test_close_does_not_start_waiting_jobs(win, monkeypatch):
+    # Windows 에서 terminate() 는 finished 를 바로 내보낸다. 그때 대기 중인 작업이 시작되면 안 된다.
+    started = []
+    monkeypatch.setattr(DownloadJob, "start", lambda self: started.append(self))
+    monkeypatch.setattr(DownloadJob, "isRunning", lambda self: True)
+    monkeypatch.setattr(DownloadJob, "terminate", lambda self: self.finished.emit())
+    monkeypatch.setattr(DownloadJob, "wait", lambda self, ms=0: True)
+    win.jobs.set_limit(2)
+    for i in range(4):
+        win.url.setText(f"https://x.com/{i}"); win.add_job()
+    assert len(started) == 2
+    win.close()
+    assert len(started) == 2
+
+
+def test_icons_follow_saved_proxy(qapp, tmp_path):
+    s = QSettings(str(tmp_path / "p.ini"), QSettings.Format.IniFormat)
+    s.setValue("settings/proxy", "http://127.0.0.1:8080")
+    w = mw.MainWindow(settings=s, data_dir=tmp_path)
+    assert w.icons.proxy == "http://127.0.0.1:8080"

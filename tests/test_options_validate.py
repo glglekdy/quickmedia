@@ -38,3 +38,10 @@ def test_extra_args():
     msg = validate_settings(AppSettings(extra_args="--nope"))["extra_args"]
     assert msg.startswith("고급 옵션을 읽지 못했어요: ") and "--nope" in msg and "Usage" not in msg
     assert validate_settings(AppSettings(extra_args="https://x.com/v"))["extra_args"] == "고급 옵션에는 링크를 넣을 수 없어요"
+
+
+def test_webm_cannot_hold_h264():
+    # yt-dlp 가 H.264 를 골라 WEBM 으로 합치려다 알 수 없는 오류로 실패한다
+    assert validate_options(DownloadOptions(container="webm", codec="h264"))["codec"] == "WEBM 에는 H.264 를 넣을 수 없어요. 코덱이나 파일 형식을 바꿔 주세요"
+    assert validate_options(DownloadOptions(container="webm", codec="h264", kind="audio")) == {}
+    assert validate_options(DownloadOptions(container="mkv", codec="h264")) == {}

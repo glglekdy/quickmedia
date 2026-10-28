@@ -88,3 +88,32 @@ def test_icons_deleted_while_fetching_is_quiet(qapp, tmp_path, capfd):
     gate.set()
     _settle()
     assert "Signal source has been deleted" not in capfd.readouterr().err
+
+
+def test_default_fetch_uses_proxy(qapp, tmp_path, monkeypatch):
+    # 프록시를 켠 사람의 실제 IP 로 사이트에 직접 붙으면 안 된다
+    from ytdl import site
+    calls = []
+    monkeypatch.setattr(site, "fetch_bytes", lambda url, proxy="": calls.append((url, proxy)))
+    icons = SiteIcons(tmp_path)
+    icons.proxy = "http://127.0.0.1:8080"
+    icons.icon("c.com"); _settle()
+    assert calls == [("https://c.com/favicon.ico", "http://127.0.0.1:8080")]
+
+
+def test_fetch_bytes_builds_proxy_opener(monkeypatch):
+    from ytdl import site
+    seen = {}
+
+    class Opener:
+        def open(self, req, timeout):
+            seen["timeout"] = timeout
+            raise OSError("no network in tests")
+
+    def build_opener(*handlers):
+        seen["proxies"] = [getattr(h, "proxies", None) for h in handlers]
+        return Opener()
+
+    monkeypatch.setattr(site.urllib.request, "build_opener", build_opener)
+    assert site.fetch_bytes("https://c.com/favicon.ico", proxy="http://p:1") is None
+    assert {"http": "http://p:1", "https": "http://p:1"} in seen["proxies"] and seen["timeout"] == 5

@@ -139,3 +139,17 @@ def test_sub_files_mode_writes_manual_subs():
     o = to_ydl_opts(DownloadOptions(subs=True, sub_mode="file"), S, folder="D", archive="A")
     assert o["writesubtitles"] is True and not o["writeautomaticsub"]
     assert not [p for p in o["postprocessors"] if p["key"] == "FFmpegEmbedSubtitle"]
+
+
+@pytest.mark.parametrize("title, folder", [("..", "playlist"), (".", "playlist"), ("", "playlist"),
+                                           ("  ...목록.  ", "...목록"), ("CON", "_CON"), ("nul.txt", "_nul.txt")])
+def test_playlist_folder_stays_inside_download_folder(title, folder):
+    # 재생목록 제목은 남이 정한 값이다. ".." 이면 저장 폴더 밖에 쓰게 된다.
+    a = args(DownloadOptions(playlist_folder=True), playlist=PlaylistContext(title, 1, 3))
+    assert a[a.index("-o") + 1] == folder + "/%(title)s.%(ext)s"
+
+
+def test_sub_langs_spaces_removed():
+    # "ko, en" 처럼 쓰면 yt-dlp 가 " en" 을 못 알아봐 영어 자막이 조용히 빠진다
+    a = args(DownloadOptions(subs=True, sub_langs="ko, en"))
+    assert a[a.index("--sub-langs") + 1] == "ko,en"
