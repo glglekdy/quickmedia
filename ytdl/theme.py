@@ -1,6 +1,6 @@
 """색 토큰과 스타일시트. DCCON 다운로더 / RCM 편집기와 같은 결.
 
-무채색 회색 단계 + 보라 강조색, 테두리 없는 납작한 버튼.
+무채색 회색 단계 + 빨강 강조색, 테두리 없는 납작한 버튼.
 OS 라이트/다크 설정을 따르고, 바꾸면 바로 따라간다.
 """
 
@@ -24,15 +24,15 @@ LIGHT = {
     "btn_pressed": "#d6d6d6",
     "disabled_fg": "#a3a3a3",
     "disabled_bg": "#f0f0f0",
-    "primary_disabled_bg": "#ddd6fe",
+    "primary_disabled_bg": "#fecaca",
     "primary_disabled_fg": "#ffffff",
     "input_bg": "#ebebeb",
     "input_focus_bg": "#ffffff",
     "popup_bg": "#ffffff",
     "card_bg": "#ffffff",
     "track": "#e5e5e5",
-    "percent": "#7c3aed",
-    "accent": "#8b5cf6",
+    "percent": "#b91c1c",
+    "accent": "#dc2626",
     "danger": "#dc2626",
     "success": "#16a34a",
     "scroll_handle": "#d4d4d4",
@@ -51,15 +51,15 @@ DARK = {
     "btn_pressed": "#3a3a3a",
     "disabled_fg": "#5c5c5c",
     "disabled_bg": "#1f1f1f",
-    "primary_disabled_bg": "#3b2d63",
+    "primary_disabled_bg": "#5c2626",
     "primary_disabled_fg": "#8c8c8c",
     "input_bg": "#2c2c2c",
     "input_focus_bg": "#2c2c2c",
     "popup_bg": "#232323",
     "card_bg": "#232323",
     "track": "#2c2c2c",
-    "percent": "#a78bfa",
-    "accent": "#8b5cf6",
+    "percent": "#f87171",
+    "accent": "#dc2626",
     "danger": "#ef4444",
     "success": "#22c55e",
     "scroll_handle": "#2c2c2c",
@@ -90,8 +90,8 @@ QPushButton:hover { background: $btn_hover; }
 QPushButton:pressed { background: $btn_pressed; }
 QPushButton:disabled { color: $disabled_fg; background: $disabled_bg; }
 QPushButton#primary { background: $accent; color: white; font-weight: 600; padding: 7px 18px; }
-QPushButton#primary:hover { background: #9d74f8; }
-QPushButton#primary:pressed { background: #7c4ff0; }
+QPushButton#primary:hover { background: #e54343; }
+QPushButton#primary:pressed { background: #c41f1f; }
 QPushButton#primary:disabled { background: $primary_disabled_bg; color: $primary_disabled_fg; }
 QPushButton#ghost { background: transparent; color: $muted; padding: 4px 8px; }
 QPushButton#ghost:hover { background: $btn_hover; color: $text; }
