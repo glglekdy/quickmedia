@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QProgressBar, QPushButton, QScrollArea, QVBoxLayout, QWidget,
 )
 
+from .app_info import NAME, SETTINGS
 from .downloader import FORMATS, DownloadJob
 
 
@@ -107,10 +108,10 @@ class JobCard(QFrame):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("유튜브 다운로더")
+        self.setWindowTitle(NAME)
         self.resize(640, 620)
         self.setMinimumSize(520, 480)
-        self.settings = QSettings("YoutubeDownloader", "YoutubeDownloader")
+        self.settings = QSettings(*SETTINGS)
         self.folder = self.settings.value("folder", str(Path.home() / "Downloads"))
         self.queue: list[tuple[DownloadJob, JobCard]] = []
         self.running: DownloadJob | None = None
@@ -128,7 +129,7 @@ class MainWindow(QMainWindow):
         head = QVBoxLayout()
         head.setContentsMargins(28, 24, 28, 8)
         head.setSpacing(4)
-        crumb = QLabel("유튜브 다운로더")
+        crumb = QLabel(NAME)
         crumb.setObjectName("crumb")
         head.addWidget(crumb)
         hint = QLabel("링크를 붙여넣고 형식을 고른 뒤 다운로드를 누르세요.")

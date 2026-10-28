@@ -6,7 +6,7 @@ import re
 import sys
 from pathlib import Path
 
-NAME = "유튜브 다운로더"
+NAME = "QuickMedia"
 
 version = re.search(r'__version__ = "([^"]+)"',
                     Path("ytdl/__init__.py").read_text(encoding="utf-8")).group(1)
@@ -20,8 +20,8 @@ text = f"""VSVersionInfo(
       StringStruct('CompanyName', '{NAME}'),
       StringStruct('FileDescription', '{NAME}'),
       StringStruct('FileVersion', '{version}'),
-      StringStruct('InternalName', 'YoutubeDownloader'),
-      StringStruct('OriginalFilename', 'YoutubeDownloader.exe'),
+      StringStruct('InternalName', 'QuickMedia'),
+      StringStruct('OriginalFilename', 'QuickMedia.exe'),
       StringStruct('ProductName', '{NAME}'),
       StringStruct('ProductVersion', '{version}')])]),
     VarFileInfo([VarStruct('Translation', [0x0412, 1200])])
