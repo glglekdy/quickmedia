@@ -1,5 +1,6 @@
-# v* 태그를 push 하면 exe 를 빌드해 GitHub 릴리즈로 올린다.
-# 설치된 앱은 시작할 때 releases/latest 를 보고 새 exe 로 스스로 업데이트한다.
+# v* 태그를 push 하면 설치 파일(QuickMedia-Setup-<버전>.exe)을 빌드해 GitHub 릴리즈로 올린다.
+# 설치된 앱은 시작할 때 releases/latest 를 보고 새 설치 파일로 스스로 업데이트한다.
+# 옛 유튜브 다운로더는 릴리즈의 첫 .exe 를 받으므로 exe 는 설치 파일 하나만 올린다.
 #
 #   git tag v1.0.1 && git push origin v1.0.1
 
@@ -39,6 +40,13 @@ jobs:
           $exe = (Get-ChildItem ffmpeg -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName
           "FFMPEG=$exe" >> $env:GITHUB_ENV
 
+      - name: Inno Setup 설치
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ISCC -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
       - name: 빌드
         shell: pwsh
         run: ./build.ps1 -FFmpeg $env:FFMPEG
@@ -46,5 +54,5 @@ jobs:
       - name: 릴리즈 올리기
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/YoutubeDownloader.exe
+          files: dist/QuickMedia-Setup-*.exe
           generate_release_notes: true
