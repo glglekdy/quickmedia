@@ -1,4 +1,4 @@
-from ytdl.options import AppSettings, DownloadOptions, validate_options, validate_settings
+from ytdl.options import AppSettings, DownloadOptions, update_settings, validate_options, validate_settings
 
 
 def test_valid_defaults():
@@ -45,3 +45,42 @@ def test_webm_cannot_hold_h264():
     assert validate_options(DownloadOptions(container="webm", codec="h264"))["codec"] == "WEBM 에는 H.264 를 넣을 수 없어요. 코덱이나 파일 형식을 바꿔 주세요"
     assert validate_options(DownloadOptions(container="webm", codec="h264", kind="audio")) == {}
     assert validate_options(DownloadOptions(container="mkv", codec="h264")) == {}
+
+
+def test_update_settings_saves_valid():
+    s = AppSettings()
+    new, errors = update_settings(s, proxy="http://p:1")
+    assert errors == {} and new.proxy == "http://p:1" and s.proxy == ""
+
+
+def test_update_settings_rejects_bad_rate():
+    s = AppSettings()
+    new, errors = update_settings(s, rate_limit="fast")
+    assert new is s and errors == {"rate_limit": "속도 제한은 5M, 500K 처럼 써 주세요"}
+
+
+def test_stale_cookie_file_does_not_block_proxy():
+    # 저장해 둔 쿠키 파일이 나중에 지워져도 다른 칸은 저장돼야 한다
+    s = AppSettings(cookies="file", cookie_file="없는.txt")
+    new, errors = update_settings(s, proxy="http://p:1")
+    assert errors == {} and new.proxy == "http://p:1"
+
+
+def test_cookie_mode_file_checks_path():
+    s = AppSettings()
+    new, errors = update_settings(s, cookies="file", cookie_file="없는.txt")
+    assert new is s and errors == {"cookie_file": "쿠키 파일을 찾을 수 없어요"}
+    new, errors = update_settings(AppSettings(cookie_file="없는.txt"), cookies="browser")
+    assert errors == {} and new.cookies == "browser"
+
+
+def test_custom_template_checked_with_name():
+    s = AppSettings()
+    new, errors = update_settings(s, name_template="custom", custom_template=" ")
+    assert new is s and errors == {"custom_template": "파일 이름 규칙을 입력해 주세요"}
+
+
+def test_bad_extra_args():
+    s = AppSettings()
+    new, errors = update_settings(s, extra_args="--nope")
+    assert new is s and list(errors) == ["extra_args"]

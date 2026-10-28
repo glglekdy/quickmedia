@@ -398,3 +398,22 @@ def validate_settings(s: AppSettings) -> dict[str, str]:
     if s.extra_args.strip() and (msg := _extra_args_error(s.extra_args)):
         errors["extra_args"] = msg
     return errors
+
+
+# 오류 키 → 그 오류를 일으키는 칸
+_ERROR_CAUSES = {
+    "rate_limit": {"rate_limit"},
+    "cookie_file": {"cookies", "cookie_file"},
+    "custom_template": {"name_template", "custom_template"},
+    "extra_args": {"extra_args"},
+}
+
+
+def update_settings(s: AppSettings, **fields) -> tuple[AppSettings, dict[str, str]]:
+    """칸 몇 개를 바꾼 설정과, 바꾼 칸 때문에 생긴 오류. 오류가 있으면 s 를 그대로 돌려준다.
+
+    이미 저장된 다른 값이 지금은 틀려도(지워진 쿠키 파일 등) 바꾼 칸은 저장된다.
+    """
+    cand = dataclasses.replace(s, **fields)
+    errors = {k: msg for k, msg in validate_settings(cand).items() if _ERROR_CAUSES[k] & fields.keys()}
+    return (s, errors) if errors else (cand, {})
