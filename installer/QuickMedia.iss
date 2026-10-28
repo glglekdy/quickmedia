@@ -30,6 +30,10 @@ Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
+[InstallDelete]
+; 업데이트할 때 옛 빌드의 DLL·Qt 플러그인이 새 것과 섞이지 않게 먼저 비운다.
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Files]
 Source: "..\dist\QuickMedia\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 
