@@ -10,6 +10,8 @@ from typing import Callable
 
 import yt_dlp
 from PySide6.QtCore import QThread, Signal
+from yt_dlp.postprocessor import PostProcessor
+from yt_dlp.utils import replace_extension
 
 # exe 로 묶였을 때 함께 들어간 ffmpeg 위치
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
@@ -49,6 +51,30 @@ def playlist_entries(info: dict, is_archived: Callable[[dict], bool] = lambda e:
             continue
         entries.append(PlaylistEntry(url, entry.get("title") or url, entry.get("playlist_index") or pos))
     return entries, skipped
+
+
+class NumberIfExistsPP(PostProcessor):
+    """같은 이름의 파일이 있으면 yt-dlp 는 받지 않고 넘어간다. 브라우저처럼 `이름 (1).mp4` 로 새로 받는다.
+    최종 확장자는 형식을 고른 뒤에야 알 수 있어 `video` 단계에 붙인다. 덮어쓰기를 켰으면 손대지 않는다."""
+
+    _EXT = ".%(ext)s"
+
+    def run(self, info):
+        ydl = self._downloader
+        base = ydl.params["outtmpl"]["default"]
+        if ydl.params.get("overwrites") or not base.endswith(self._EXT):
+            return [], info
+        stem, n = base[:-len(self._EXT)], 0
+        while self._taken(ydl.prepare_filename(info), info):
+            n += 1
+            ydl.params["outtmpl"] = {**ydl.params["outtmpl"], "default": f"{stem} ({n}){self._EXT}"}
+        return [], info
+
+    def _taken(self, filename: str, info: dict) -> bool:
+        # yt-dlp 가 "이미 받음" 으로 보는 경로와 같게: 받은 그대로와 변환(mp3 등)을 마친 이름
+        ext = info.get("ext")
+        final = self._downloader.params.get("final_ext") or ext
+        return any(Path(p).exists() for p in (filename, replace_extension(filename, final, ext)))
 
 
 # 위에서부터 맞춰 본다. 쿠키 실패 메시지에도 "Sign in" 이 섞일 수 있어 쿠키가 먼저다.
@@ -121,6 +147,7 @@ class DownloadJob(QThread):
         opts = {**self.ydl_opts, "progress_hooks": [self._hook]}
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.add_post_processor(NumberIfExistsPP(ydl), when="video")
                 # yt-dlp 는 재생목록을 펼칠 때 받은 기록에 있는 항목을 말없이 뺀다.
                 # 몇 개를 건너뛰었는지 직접 세려고 펼치는 동안만 기록을 비워 둔다.
                 archive, ydl.archive = ydl.archive, set()

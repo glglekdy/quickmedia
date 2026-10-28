@@ -1,6 +1,10 @@
-import pytest
+from pathlib import Path
 
-from ytdl.downloader import PlaylistEntry, friendly_error, playlist_entries
+import pytest
+import yt_dlp
+
+from ytdl.downloader import NumberIfExistsPP, PlaylistEntry, friendly_error, playlist_entries
+from ytdl.options import AppSettings, DownloadOptions, to_ydl_opts
 
 
 @pytest.mark.parametrize("msg, expected", [
@@ -54,6 +58,9 @@ class _FakeYDL:
     def __exit__(self, *exc):
         return False
 
+    def add_post_processor(self, pp, when):
+        pass
+
     def in_download_archive(self, entry):
         return f"{entry['ie_key'].lower()} {entry['id']}" in self.archive
 
@@ -72,3 +79,34 @@ def test_expand_counts_archived_entries(monkeypatch):
     job.run()
     (result,) = got
     assert [e.url for e in result.entries] == ["https://y/a", "https://y/c"] and result.skipped == 1
+
+
+def _renamed(tmp_path: Path, existing: list[str], info: dict, *,
+             opts: DownloadOptions | None = None, settings: AppSettings | None = None) -> str:
+    """이미 있는 파일을 만들어 두고, 형식이 정해진 뒤 단계를 거친 실제 저장 이름."""
+    for name in existing:
+        (tmp_path / name).write_bytes(b"x")
+    ydl_opts = to_ydl_opts(opts or DownloadOptions(), settings or AppSettings(),
+                           folder=str(tmp_path), archive=str(tmp_path / "a.txt"))
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        _, info = NumberIfExistsPP(ydl).run({"id": "x", "title": "Me", **info})
+        return Path(ydl.prepare_filename(info)).name
+
+
+def test_number_if_exists_keeps_name_when_free(tmp_path):
+    assert _renamed(tmp_path, [], {"ext": "mp4"}) == "Me.mp4"
+
+
+def test_number_if_exists_adds_next_free_number(tmp_path):
+    assert _renamed(tmp_path, ["Me.mp4"], {"ext": "mp4"}) == "Me (1).mp4"
+    assert _renamed(tmp_path, ["Me (1).mp4"], {"ext": "mp4"}) == "Me (2).mp4"
+
+
+def test_number_if_exists_checks_converted_audio(tmp_path):
+    # 음성은 m4a 로 받아 mp3 로 바꾼다. 남아 있는 건 mp3 다.
+    got = _renamed(tmp_path, ["Me.mp3"], {"ext": "m4a"}, opts=DownloadOptions(kind="audio", audio_format="mp3"))
+    assert got == "Me (1).m4a"
+
+
+def test_number_if_exists_leaves_overwrite_alone(tmp_path):
+    assert _renamed(tmp_path, ["Me.mp4"], {"ext": "mp4"}, settings=AppSettings(overwrite=True)) == "Me.mp4"
