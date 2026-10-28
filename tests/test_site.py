@@ -1,0 +1,76 @@
+import os
+import time
+
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QThreadPool
+from PySide6.QtGui import QColor, QImage
+from PySide6.QtWidgets import QApplication
+
+from ytdl.site import SiteIcons, display_name, domain_of, icon_url, letter_of
+
+
+def test_domain_of():
+    assert domain_of("https://www.youtube.com/watch?v=x") == "youtube.com"
+    assert domain_of("https://m.youtube.com/watch?v=x") == "youtube.com"
+    assert domain_of("https://tv.naver.com/v/1") == "tv.naver.com"
+    assert domain_of("not a url") == ""
+
+
+def test_display_name():
+    assert display_name("Youtube", "youtube.com") == "YouTube"
+    assert display_name("YoutubeTab", "youtube.com") == "YouTube"
+    assert display_name("Twitch:vod", "twitch.tv") == "Twitch"
+    assert display_name("Twitter", "x.com") == "X"
+    assert display_name("SoopLive", "sooplive.co.kr") == "SOOP"
+    assert display_name("Naver", "tv.naver.com") == "네이버 TV"
+    assert display_name("Generic", "example.com") == "example.com"
+    assert display_name("", "example.com") == "example.com"
+    assert display_name("Rumble", "rumble.com") == "Rumble"
+
+
+def test_icon_url_and_letter():
+    assert icon_url("youtube.com") == "https://youtube.com/favicon.ico"
+    assert letter_of("youtube.com") == "Y" and letter_of("네이버 TV") == "네" and letter_of("") == "?"
+
+
+def _png():
+    img = QImage(48, 48, QImage.Format.Format_ARGB32); img.fill(QColor("#00ff00"))
+    ba = QByteArray(); buf = QBuffer(ba); buf.open(QIODevice.OpenModeFlag.WriteOnly); img.save(buf, "PNG")
+    return bytes(ba)
+
+
+def _settle():
+    QThreadPool.globalInstance().waitForDone(3000)
+    QApplication.processEvents()
+
+
+def test_fetches_caches_and_signals(qapp, tmp_path):
+    calls, got = [], []
+    icons = SiteIcons(tmp_path, fetch=lambda u: calls.append(u) or _png())
+    icons.ready.connect(lambda h, p: got.append(h))
+    first = icons.icon("youtube.com")              # 처음엔 대체 아이콘
+    assert first.toImage().pixelColor(16, 16) != QColor("#00ff00")
+    _settle()
+    assert got == ["youtube.com"] and calls == ["https://youtube.com/favicon.ico"]
+    assert (tmp_path / "youtube.com.png").exists()
+    assert icons.icon("youtube.com").toImage().pixelColor(16, 16) == QColor("#00ff00")
+    again = SiteIcons(tmp_path, fetch=lambda u: calls.append(u))  # 디스크 캐시
+    again.icon("youtube.com"); _settle()
+    assert len(calls) == 1
+
+
+def test_stale_cache_refetches(qapp, tmp_path):
+    (tmp_path / "a.com.png").write_bytes(_png())
+    old = time.time() - 31 * 86400
+    os.utime(tmp_path / "a.com.png", (old, old))
+    calls = []
+    SiteIcons(tmp_path, fetch=lambda u: calls.append(u) or _png()).icon("a.com"); _settle()
+    assert calls == ["https://a.com/favicon.ico"]
+
+
+def test_html_response_keeps_fallback_and_is_not_retried(qapp, tmp_path):
+    calls, got = [], []
+    icons = SiteIcons(tmp_path, fetch=lambda u: calls.append(u) or b"<html>not found</html>")
+    icons.ready.connect(lambda h, p: got.append(h))
+    icons.icon("b.com"); _settle()
+    icons.icon("b.com"); _settle()
+    assert got == [] and len(calls) == 1 and not (tmp_path / "b.com.png").exists()
