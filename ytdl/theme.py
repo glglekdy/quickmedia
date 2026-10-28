@@ -38,6 +38,7 @@ LIGHT = {
     "danger": "#dc2626",
     "success": "#16a34a",
     "scroll_handle": "#d4d4d4",
+    "nav_hover": "#f0f0f0",
 }
 
 # RCM tokens.css 값을 바탕으로 한다.
@@ -65,6 +66,7 @@ DARK = {
     "danger": "#ef4444",
     "success": "#22c55e",
     "scroll_handle": "#2c2c2c",
+    "nav_hover": "#232323",
 }
 
 # 체크 표시·화살표 그림. exe 로 묶이면 _internal/ytdl/assets 에 들어간다.
@@ -157,6 +159,7 @@ QScrollArea, #queueHolder { background: $bg; border: none; }
 #cardStatus[state="done"] { color: $success; }
 #percent { color: $percent; font-size: 12px; font-weight: 600; }
 #dock { background: $surface; border-top: 1px solid $border; }
+#sidebar { background: $surface; border-right: 1px solid $border; }
 #emptyState { color: $muted; font-size: 14px; padding: 32px; }
 QProgressBar { border: none; border-radius: 3px; background: $track; max-height: 6px; }
 QProgressBar::chunk { background: $accent; border-radius: 3px; }
