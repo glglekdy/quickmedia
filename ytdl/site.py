@@ -84,12 +84,13 @@ class _Fetch(QRunnable):
     def run(self) -> None:
         data = self.fetch(icon_url(self.host))
         image = QImage.fromData(data) if data else QImage()
-        if image.isNull():
-            self.relay.fetched.emit(self.host, None)
-            return
-        image = image.scaled(ICON_PX, ICON_PX, Qt.AspectRatioMode.KeepAspectRatio,
-                             Qt.TransformationMode.SmoothTransformation)
-        self.relay.fetched.emit(self.host, image)
+        if not image.isNull():
+            image = image.scaled(ICON_PX, ICON_PX, Qt.AspectRatioMode.KeepAspectRatio,
+                                 Qt.TransformationMode.SmoothTransformation)
+        try:
+            self.relay.fetched.emit(self.host, None if image.isNull() else image)
+        except RuntimeError:
+            pass  # 받는 사이에 앱이 끝나 받을 곳이 사라졌다
 
 
 class SiteIcons(QObject):

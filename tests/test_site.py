@@ -74,3 +74,17 @@ def test_html_response_keeps_fallback_and_is_not_retried(qapp, tmp_path):
     icons.icon("b.com"); _settle()
     icons.icon("b.com"); _settle()
     assert got == [] and len(calls) == 1 and not (tmp_path / "b.com.png").exists()
+
+
+def test_icons_deleted_while_fetching_is_quiet(qapp, tmp_path, capfd):
+    # 앱이 끝나며 Qt 객체가 먼저 지워져도 받던 작업이 오류를 내면 안 된다
+    import threading
+
+    import shiboken6
+    gate = threading.Event()
+    icons = SiteIcons(tmp_path, fetch=lambda u: gate.wait(2) and _png())
+    icons.icon("slow.com")
+    shiboken6.delete(icons._relay)
+    gate.set()
+    _settle()
+    assert "Signal source has been deleted" not in capfd.readouterr().err
