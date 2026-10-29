@@ -35,4 +35,10 @@ class ReleasesTest {
 
     // GitHub 가 크기·digest 를 주지 않은 자산이면 그 검사는 건너뛴다
     @Test fun verifySkipsMissingExpectations() = assertNull(verify(5, "ff", Release("1.1.0", "", "u", 0, "")))
+
+    // 릴리스 설명은 마크다운이다. 제목과 목록만 알아보고, 빈 줄은 한 줄로 줄인다.
+    @Test fun noteLinesReadHeadingsAndBullets() = assertEquals(
+        listOf(NoteLine("고친 점", heading = true), NoteLine(""), NoteLine("• 하나"), NoteLine("• 둘"), NoteLine(""), NoteLine("끝")),
+        noteLines("\r\n## 고친 점\r\n\r\n- 하나\r\n* 둘\r\n\r\n\r\n끝\r\n"),
+    )
 }

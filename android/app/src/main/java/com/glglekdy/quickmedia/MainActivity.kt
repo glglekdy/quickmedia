@@ -17,6 +17,10 @@ import com.glglekdy.quickmedia.download.extractLink
 import com.glglekdy.quickmedia.ui.MainScreen
 import com.glglekdy.quickmedia.ui.QuickMediaTheme
 import com.glglekdy.quickmedia.ui.SettingsScreen
+import com.glglekdy.quickmedia.ui.UpdateDialog
+import com.glglekdy.quickmedia.update.Release
+import com.glglekdy.quickmedia.update.UpdateException
+import com.glglekdy.quickmedia.update.Updater
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
@@ -29,11 +33,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // 화면을 돌려 다시 만들어질 때는 같은 공유를 또 받지 않는다
         if (savedInstanceState == null) receiveShare(intent)
+        val launched = savedInstanceState == null
         setContent {
             QuickMediaTheme {
                 var settings by rememberSaveable { mutableStateOf(false) }
                 var link by rememberSaveable { mutableStateOf("") }
                 val snackbar = remember { SnackbarHostState() }
+                var update by rememberSaveable { mutableStateOf<Release?>(null) }
+                // 켤 때 한 번. 확인하지 못해도 아무것도 띄우지 않는다
+                LaunchedEffect(Unit) {
+                    if (launched) update = try { Updater.check() } catch (e: UpdateException) { null }
+                }
                 LaunchedEffect(Unit) {
                     for (found in shared) {
                         settings = false
@@ -43,10 +53,11 @@ class MainActivity : ComponentActivity() {
                 }
                 if (settings) {
                     BackHandler { settings = false }
-                    SettingsScreen(onBack = { settings = false })
+                    SettingsScreen(onBack = { settings = false }, onNewVersion = { update = it })
                 } else {
                     MainScreen(link, { link = it }, snackbar, onOpenSettings = { settings = true })
                 }
+                update?.let { UpdateDialog(it, onDismiss = { update = null }) }
             }
         }
     }

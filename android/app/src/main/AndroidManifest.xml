@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 앱 안에서 새 버전 APK 설치 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- extractNativeLibs: youtubedl-android 가 설치 폴더의 .so 에서 파이썬·ffmpeg 를 푼다 -->
     <application
@@ -30,6 +32,10 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".update.InstallResultReceiver"
+            android:exported="false" />
 
         <service
             android:name=".download.DownloadService"

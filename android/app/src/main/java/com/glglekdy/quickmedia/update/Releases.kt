@@ -1,6 +1,7 @@
 package com.glglekdy.quickmedia.update
 
 import org.json.JSONObject
+import java.io.Serializable
 
 const val LATEST_URL = "https://api.github.com/repos/glglekdy/quickmedia/releases/latest"
 
@@ -14,7 +15,7 @@ data class Release(
     val apkSize: Long,
     /** 소문자 hex. GitHub 가 주지 않았으면 "" */
     val sha256: String,
-)
+) : Serializable // 화면이 다시 만들어져도 업데이트 안내가 남게 저장한다
 
 /** `v1.2.3`, `1.2`, `1.2.3-beta` 모두 숫자 부분만. 끝의 0 은 뗀다(1.1.0 == 1.1). 데스크톱 `parse_version` 과 같다. */
 fun parseVersion(text: String): List<Int> {
@@ -57,6 +58,25 @@ fun verify(size: Long, sha256Hex: String, release: Release): String? = when {
     release.sha256.isNotEmpty() && !sha256Hex.equals(release.sha256, ignoreCase = true) -> "받은 파일이 손상되었어요. (SHA-256 불일치)"
     else -> null
 }
+
+/** 릴리스 설명의 한 줄. 제목 줄은 굵게 보인다. */
+data class NoteLine(val text: String, val heading: Boolean = false)
+
+private val HEADING = Regex("""^#{1,6}\s+""")
+private val BULLET = Regex("""^\s*[-*]\s+""")
+
+/** 릴리스 설명(마크다운)을 줄로. 제목(`#`)과 목록(`-`, `*`)만 알아보고 나머지는 글자 그대로 둔다. 빈 줄은 한 줄로 줄인다. */
+fun noteLines(markdown: String): List<NoteLine> = markdown.lines()
+    .map { line ->
+        val text = line.trimEnd()
+        HEADING.find(text)?.let { return@map NoteLine(text.substring(it.range.last + 1), heading = true) }
+        BULLET.find(text)?.let { return@map NoteLine("• " + text.substring(it.range.last + 1)) }
+        NoteLine(text)
+    }
+    .fold(mutableListOf<NoteLine>()) { lines, line ->
+        lines.apply { if (line.text.isNotEmpty() || lines.lastOrNull()?.text?.isNotEmpty() == true) add(line) }
+    }
+    .dropLastWhile { it.text.isEmpty() }
 
 // 안드로이드 org.json 의 optString 은 null 값을 "null" 로 돌려준다
 private fun JSONObject.str(key: String): String = if (isNull(key)) "" else optString(key)

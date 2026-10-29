@@ -5,6 +5,7 @@ import android.system.Os
 import android.system.OsConstants
 import android.util.Log
 import com.glglekdy.quickmedia.download.fixPageSize
+import com.glglekdy.quickmedia.update.Updater
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,7 @@ class App : Application() {
         scope.launch(Dispatchers.IO) {
             // 받다가 앱이 꺼졌으면 조각 파일이 남는다. 새 프로세스에서는 아직 아무것도 받고 있지 않다.
             File(cacheDir, "dl").deleteRecursively()
+            Updater.removeLeftovers(File(cacheDir, "update"))
             _tools.value = try {
                 YoutubeDL.getInstance().init(this@App)
                 FFmpeg.getInstance().init(this@App)
