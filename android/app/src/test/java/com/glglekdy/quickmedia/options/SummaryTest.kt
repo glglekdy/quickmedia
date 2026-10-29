@@ -1,6 +1,7 @@
 package com.glglekdy.quickmedia.options
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SummaryTest {
@@ -16,15 +17,23 @@ class SummaryTest {
         QUALITIES.map(::qualityLabel) + AUDIO_FORMATS.map(::qualityLabel),
     )
 
-    @Test fun nothingChangedByDefault() = assertEquals(emptyList<String>(), changedSummary(DownloadOptions()))
+    @Test fun summaryNullByDefault() {
+        assertNull(optionsSummary(DownloadOptions()))
+        // 일부 항목을 고른 것 자체가 바꾼 것이다. 번호를 안 적었으면 받을 때 검사에 걸린다
+        assertEquals("재생목록 일부", optionsSummary(DownloadOptions(playlist = PlaylistMode.ITEMS)))
+    }
 
-    // 접힌 "옵션 더보기" 옆에 보인다. 구간 자르기가 켜진 채 잊고 받는 일이 없게.
-    @Test fun changedOptionsAreListed() = assertEquals(
-        listOf("재생목록", "썸네일·메타데이터", "구간"),
-        changedSummary(DownloadOptions(playlist = PlaylistMode.ALL, embedMeta = true, sectionEnd = "0:10")),
+    @Test fun summaryEach() {
+        assertEquals("전체 재생목록", optionsSummary(DownloadOptions(playlist = PlaylistMode.ALL)))
+        assertEquals("재생목록 1-5,8", optionsSummary(DownloadOptions(playlist = PlaylistMode.ITEMS, playlistItems = " 1-5,8 ")))
+        assertEquals("메타데이터", optionsSummary(DownloadOptions(embedMeta = true)))
+        assertEquals("1:23부터", optionsSummary(DownloadOptions(sectionStart = "1:23")))
+        assertEquals("1:23까지", optionsSummary(DownloadOptions(sectionEnd = "1:23")))
+        assertEquals("1:23~2:00", optionsSummary(DownloadOptions(sectionStart = "1:23", sectionEnd = "2:00")))
+    }
+
+    @Test fun summaryJoined() = assertEquals(
+        "전체 재생목록 · 메타데이터 · 1:23부터",
+        optionsSummary(DownloadOptions(playlist = PlaylistMode.ALL, embedMeta = true, sectionStart = "1:23")),
     )
-
-    // 일부 항목을 골랐어도 번호를 안 적었으면 바뀐 게 없다
-    @Test fun emptyItemsAreNotAChange() =
-        assertEquals(emptyList<String>(), changedSummary(DownloadOptions(playlist = PlaylistMode.ITEMS)))
 }

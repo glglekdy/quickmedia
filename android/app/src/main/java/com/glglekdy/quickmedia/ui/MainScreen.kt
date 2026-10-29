@@ -83,7 +83,7 @@ import com.glglekdy.quickmedia.options.OptionsStore
 import com.glglekdy.quickmedia.options.PlaylistMode
 import com.glglekdy.quickmedia.options.QUALITIES
 import com.glglekdy.quickmedia.options.YtdlpArgs
-import com.glglekdy.quickmedia.options.changedSummary
+import com.glglekdy.quickmedia.options.optionsSummary
 import com.glglekdy.quickmedia.options.describe
 import com.glglekdy.quickmedia.options.qualityLabel
 import kotlinx.coroutines.launch
@@ -208,9 +208,9 @@ fun MainScreen(
             }
             item("more") {
                 Column {
-                    val changed = changedSummary(options)
+                    val changed = optionsSummary(options)
                     TextButton(onClick = { expanded = !expanded }) {
-                        Text(if (changed.isEmpty()) "옵션 더보기" else "옵션 더보기 · " + changed.joinToString(", "))
+                        Text(if (changed == null) "옵션 더보기" else "옵션 더보기 · $changed")
                         Icon(
                             painterResource(R.drawable.ic_expand),
                             contentDescription = null,

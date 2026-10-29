@@ -13,9 +13,19 @@ fun describe(o: DownloadOptions): String = when (o.kind) {
     Kind.VIDEO -> (if (o.quality == "best") "최고 화질" else "${o.quality}p") + " · MP4"
 }
 
-/** 옵션 더보기에서 기본값과 달라진 항목. 접혀 있어도 켜 둔 걸 알 수 있게 버튼 옆에 보인다. */
-fun changedSummary(o: DownloadOptions): List<String> = buildList {
-    if (o.playlist == PlaylistMode.ALL || (o.playlist == PlaylistMode.ITEMS && o.playlistItems.isNotBlank())) add("재생목록")
-    if (o.embedMeta) add("썸네일·메타데이터")
-    if (o.sectionStart.isNotBlank() || o.sectionEnd.isNotBlank()) add("구간")
-}
+/** 받기 탭 옵션 줄에 보일 바꾼 옵션. 예: `전체 재생목록 · 1:23부터`. 기본값 그대로면 null. */
+fun optionsSummary(o: DownloadOptions): String? = buildList {
+    when (o.playlist) {
+        PlaylistMode.SINGLE -> {}
+        PlaylistMode.ALL -> add("전체 재생목록")
+        PlaylistMode.ITEMS -> add(o.playlistItems.trim().let { if (it.isEmpty()) "재생목록 일부" else "재생목록 $it" })
+    }
+    if (o.embedMeta) add("메타데이터")
+    val start = o.sectionStart.trim()
+    val end = o.sectionEnd.trim()
+    when {
+        start.isNotEmpty() && end.isNotEmpty() -> add("$start~$end")
+        start.isNotEmpty() -> add("${start}부터")
+        end.isNotEmpty() -> add("${end}까지")
+    }
+}.takeIf { it.isNotEmpty() }?.joinToString(" · ")

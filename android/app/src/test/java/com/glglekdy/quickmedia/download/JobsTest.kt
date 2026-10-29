@@ -35,6 +35,32 @@ class JobsTest {
         assertEquals(listOf(b.id), Jobs.list.value.map { it.id })
     }
 
+    @Test fun retryFailedOrCancelled() {
+        val a = Jobs.add("u1", DownloadOptions())
+        val b = Jobs.add("u2", DownloadOptions())
+        Jobs.update(a.id) { it.copy(state = JobState.FAILED, percent = 40f, status = "오류", saved = listOf("content://x")) }
+        assertTrue(Jobs.retry(a.id))
+        val again = Jobs.get(a.id)!!
+        assertEquals(JobState.QUEUED, again.state)
+        assertEquals(0f, again.percent)
+        assertEquals("대기 중", again.status)
+        assertEquals(emptyList<String>(), again.saved)
+        assertEquals(listOf(b.id, a.id), Jobs.list.value.map { it.id }) // 자리는 그대로
+        Jobs.cancel(b.id)
+        assertTrue(Jobs.retry(b.id))
+        assertEquals(JobState.QUEUED, Jobs.get(b.id)!!.state)
+    }
+
+    @Test fun retryIgnoresActiveAndDone() {
+        val a = Jobs.add("u1", DownloadOptions())
+        Jobs.update(a.id) { it.copy(state = JobState.RUNNING, percent = 30f) }
+        assertFalse(Jobs.retry(a.id))
+        assertEquals(30f, Jobs.get(a.id)!!.percent)
+        Jobs.update(a.id) { it.copy(state = JobState.DONE) }
+        assertFalse(Jobs.retry(a.id))
+        assertEquals(JobState.DONE, Jobs.get(a.id)!!.state)
+    }
+
     @Test fun titleFromDestination() = assertEquals(
         "Me at the zoo",
         titleFromLine("[download] Destination: /data/user/0/x/cache/dl/3/Me at the zoo.f137.mp4"),

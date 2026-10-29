@@ -51,6 +51,18 @@ object Jobs {
         return cancelled
     }
 
+    /** 실패·취소한 작업을 같은 링크·옵션으로 대기열에 다시 넣는다. 목록 자리는 그대로. */
+    fun retry(id: Long): Boolean {
+        var queued = false
+        update(id) {
+            if (it.state == JobState.FAILED || it.state == JobState.CANCELLED) {
+                queued = true
+                it.copy(state = JobState.QUEUED, percent = 0f, status = "대기 중", saved = emptyList())
+            } else it
+        }
+        return queued
+    }
+
     fun clearFinished() = _list.update { jobs -> jobs.filter { it.state == JobState.QUEUED || it.state == JobState.RUNNING } }
 
     /** 테스트용 */
