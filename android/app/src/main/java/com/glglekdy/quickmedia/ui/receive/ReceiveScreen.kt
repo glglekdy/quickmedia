@@ -110,6 +110,8 @@ fun ReceiveScreen(
         }
     }
     DisposableEffect(Unit) { onDispose { Previews.focus(null) } }
+    // 공유로 채워질 때도 "먼저 링크를 넣어 주세요" 를 지운다
+    LaunchedEffect(link) { if (link.isNotBlank()) linkError = null }
 
     fun change(o: DownloadOptions) {
         options = o

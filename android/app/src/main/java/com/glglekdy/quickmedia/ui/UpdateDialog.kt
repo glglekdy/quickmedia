@@ -23,7 +23,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.glglekdy.quickmedia.ui.theme.Qm
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -105,7 +108,9 @@ fun UpdateDialog(release: Release, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text("새 버전 ${release.version}") },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = Qm.colors.surface,
+        title = { Text("새 버전 ${release.version}", fontWeight = FontWeight.ExtraBold) },
         text = {
             Column {
                 Text(
@@ -140,7 +145,9 @@ fun UpdateDialog(release: Release, onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = { start() }, enabled = !busy) { Text(if (failed) "다시 시도" else "지금 업데이트") }
+            TextButton(onClick = { start() }, enabled = !busy) {
+                Text(if (failed) "다시 시도" else "지금 업데이트", fontWeight = FontWeight.Bold, color = Qm.colors.accentText)
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !busy) { Text("나중에") }

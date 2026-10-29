@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -34,7 +33,7 @@ import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
 
-/** 화면 아래 가운데 떠 있는 알약 메뉴. 뒤 내용이 흐리게 비친다(안드로이드 12+, 그 아래는 반투명만). */
+/** 화면 아래 가운데 떠 있는 알약 메뉴. 아이콘만 있다. 뒤 내용이 흐리게 비친다(안드로이드 12+, 그 아래는 반투명만). */
 @Composable
 fun Dock(selected: Tab, onSelect: (Tab) -> Unit, badge: Int, hazeState: HazeState, modifier: Modifier = Modifier) {
     val c = Qm.colors
@@ -59,7 +58,7 @@ fun Dock(selected: Tab, onSelect: (Tab) -> Unit, badge: Int, hazeState: HazeStat
         Tab.entries.forEach { tab ->
             val on = tab == selected
             Box {
-                Column(
+                Box(
                     Modifier
                         .clip(CircleShape)
                         .background(if (on) c.accent.copy(alpha = if (c.isDark) 0.18f else 0.12f) else Color.Transparent)
@@ -68,17 +67,15 @@ fun Dock(selected: Tab, onSelect: (Tab) -> Unit, badge: Int, hazeState: HazeStat
                             indication = null,
                             role = Role.Tab,
                         ) { onSelect(tab) }
-                        .padding(horizontal = 18.dp, vertical = 7.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    val color = if (on) c.accentText else c.textDim
-                    Icon(painterResource(tab.icon), contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
-                    Text(
-                        tab.label,
-                        color = color,
-                        fontSize = 11.sp,
-                        fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.padding(top = 2.dp),
+                    // 글자 없이 아이콘만. 이름은 화면 읽기용으로 둔다
+                    Icon(
+                        painterResource(tab.icon),
+                        contentDescription = tab.label,
+                        tint = if (on) c.accentText else c.textDim,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
                 if (tab == Tab.LIST && badge > 0) {
@@ -89,7 +86,7 @@ fun Dock(selected: Tab, onSelect: (Tab) -> Unit, badge: Int, hazeState: HazeStat
                         fontWeight = FontWeight.ExtraBold,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .offset(x = (-8).dp, y = 3.dp)
+                            .offset(x = (-10).dp, y = 6.dp)
                             .clip(CircleShape)
                             .background(c.accent)
                             .padding(horizontal = 5.dp),
