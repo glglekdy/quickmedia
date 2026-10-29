@@ -2,15 +2,14 @@ package com.glglekdy.quickmedia.options
 
 /** 고른 옵션을 yt-dlp 명령줄 인자로. 데스크톱 `ytdl/options.py` 의 `build_args` 와 같은 값을 쓴다. */
 object YtdlpArgs {
-    private const val TEMPLATE = "%(title)s.%(ext)s"
-
-    // 한글은 3바이트라 255바이트 파일 이름 한도에 금방 닿는다
-    private const val MAX_NAME = "80"
+    // 파일 이름 한도는 255바이트인데 한글은 3바이트, 이모지는 4바이트다. 제목을 글자 수가 아니라 200바이트로 잘라
+    // 받는 동안 붙는 `.fhls-1080p.mp4.part-Frag12` 같은 꼬리 자리를 남긴다.
+    private const val TEMPLATE = "%(title).200B.%(ext)s"
 
     private val ITEMS = Regex("""^\d+(-\d+)?(,\d+(-\d+)?)*$""")
 
     fun build(o: DownloadOptions, outDir: String): List<String> = buildList {
-        addAll(listOf("-P", outDir, "-o", TEMPLATE, "--no-mtime", "--trim-filenames", MAX_NAME))
+        addAll(listOf("-P", outDir, "-o", TEMPLATE, "--no-mtime"))
 
         when (o.playlist) {
             PlaylistMode.SINGLE -> add("--no-playlist")

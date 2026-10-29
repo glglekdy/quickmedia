@@ -13,8 +13,16 @@ class YtdlpArgsTest {
 
     @Test fun alwaysArgs() {
         val a = args(DownloadOptions())
-        assertTrue(a.containsAll(listOf("--no-mtime", "--trim-filenames", "80")))
-        assertEquals(listOf("-P", "/c/dl", "-o", "%(title)s.%(ext)s"), a.windowAfter("-P", 4))
+        assertTrue(a.contains("--no-mtime"))
+        assertEquals(listOf("-P", "/c/dl", "-o", "%(title).200B.%(ext)s"), a.windowAfter("-P", 4))
+    }
+
+    // 파일 이름 한도는 255바이트다. 한글(3바이트)·이모지(4바이트)가 많은 제목도, 받는 동안 붙는
+    // `.fhls-1080p.mp4.part-Frag12` 같은 꼬리까지 들어가게 글자 수가 아니라 바이트로 자른다.
+    @Test fun titleTrimmedByBytes() {
+        val a = args(DownloadOptions())
+        assertEquals("%(title).200B.%(ext)s", a.after("-o"))
+        assertFalse(a.contains("--trim-filenames"))
     }
 
     @Test fun videoBest() {
