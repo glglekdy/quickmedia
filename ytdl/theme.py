@@ -152,6 +152,8 @@ QTabBar::tab:selected { color: $text; border-bottom: 2px solid $accent; }
 #fieldError { color: $danger; font-size: 12px; }
 QLineEdit[invalid="true"] { border-color: $danger; }
 #savedBadge { color: $success; font-size: 12px; }
+#updateTitle { font-size: 15px; font-weight: 600; color: $heading; }
+QTextBrowser#updateNotes { background: transparent; border: none; border-top: 1px solid $border; padding-top: 8px; }
 #settingsCard { background: $card_bg; border: 1px solid $border; border-radius: 10px; }
 #cardSite { color: $muted; font-size: 11px; }
 QScrollArea, #queueHolder, #settingsHolder { background: $bg; border: none; }
