@@ -10,6 +10,10 @@ val versionParts = Regex("""^(\d+)\.(\d+)\.(\d+)""").find(appVersion)?.destructu
 val appVersionCode = versionParts?.let { (a, b, c) -> a.toInt() * 10000 + b.toInt() * 100 + c.toInt() }
     ?.takeIf { it > 0 } ?: 1
 
+// 릴리즈 서명 키. 워크플로가 Secrets 로 채운다. 없으면 서명하지 않은 app-release-unsigned.apk 가 나온다.
+fun env(name: String) = providers.environmentVariable(name).orNull
+val keystoreFile = env("ANDROID_KEYSTORE_FILE")
+
 android {
     namespace = "com.glglekdy.quickmedia"
     compileSdk = 37
@@ -22,14 +26,26 @@ android {
         versionName = appVersion
     }
 
+    signingConfigs {
+        if (keystoreFile != null) create("release") {
+            storeFile = file(keystoreFile)
+            storePassword = env("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = env("ANDROID_KEY_ALIAS")
+            keyPassword = env("ANDROID_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         debug {
             // x86_64 는 PC 에뮬레이터용
             ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         }
         release {
+            // 같은 키로 서명한 APK 만 덮어 설치된다
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
-            ndk { abiFilters += listOf("arm64-v8a") }
+            // 에뮬레이터(x86_64)에서 릴리즈 빌드를 시험할 때만 -PextraAbi=x86_64
+            ndk { abiFilters += listOf("arm64-v8a") + listOfNotNull(findProperty("extraAbi") as String?) }
         }
     }
 
