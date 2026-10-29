@@ -73,3 +73,31 @@ def test_sidebar_is_garbage_collected(qapp):
     ref = weakref.ref(Sidebar())
     gc.collect()
     assert ref() is None
+
+
+def test_update_item_at_bottom(bar):
+    bar.nav["settings"].click()
+    bar.anim.setCurrentTime(bar.anim.totalDuration())
+    bar.resize(168, 640)
+    bar.show()
+    assert bar.nav["update"].geometry().top() > bar.nav["advanced"].geometry().bottom() + 100
+    bar.hide()
+
+
+def test_update_collapses_settings(bar):
+    bar.nav["settings"].click()
+    bar.nav["update"].click()
+    assert bar.emitted == ["login", "update"] and not bar.expanded and bar.nav["update"].isChecked()
+
+
+def test_set_dot(bar):
+    assert not bar.nav["update"].dot
+    bar.set_dot("update", True)
+    assert bar.nav["update"].dot
+    bar.set_dot("update", False)
+    assert not bar.nav["update"].dot
+
+
+def test_version_label(bar):
+    from ytdl import __version__
+    assert bar.version_label.text() == f"버전 {__version__}" and bar.version_label.objectName() == "navVersion"

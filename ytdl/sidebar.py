@@ -1,4 +1,4 @@
-"""메인 창 왼쪽 메뉴. 다운로드 / 설정(누르면 아래로 펼쳐지는 로그인·네트워크·파일·고급).
+"""메인 창 왼쪽 메뉴. 다운로드 / 설정(누르면 아래로 펼쳐지는 로그인·네트워크·파일·고급) / 맨 아래 업데이트.
 
 밖으로는 `page_changed(key)` 하나만 내보낸다. 화면을 실제로 바꾸는 건 메인 창이 한다.
 펼침·선택 상태는 누르는 즉시 바뀌고, 애니메이션은 보이는 것만 맡는다.
@@ -11,9 +11,9 @@ from PySide6.QtCore import (
     Signal,
 )
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPen
-from PySide6.QtWidgets import QAbstractButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QAbstractButton, QLabel, QVBoxLayout, QWidget
 
-from . import theme
+from . import __version__, theme
 from .theme import ASSETS
 
 SETTINGS_KEYS = ("login", "network", "file", "advanced")
@@ -36,6 +36,7 @@ class NavItem(QAbstractButton):
         self._icon = QIcon(str(ASSETS / icon)) if icon else None
         self._chevron = chevron
         self._angle = 0.0
+        self.dot = False  # 새 버전 알림 빨간 점
 
     def nextCheckState(self) -> None:
         pass
@@ -79,6 +80,10 @@ class NavItem(QAbstractButton):
         p.setFont(font)
         p.setPen(QColor(theme.color("text")))
         p.drawText(QRect(_TEXT_X, 0, w - _TEXT_X - 24, h), Qt.AlignmentFlag.AlignVCenter, self.text())
+        if self.dot:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(theme.color("accent")))
+            p.drawEllipse(QPointF(w - 16, h / 2), 3.5, 3.5)
         if self._chevron:
             pen = QPen(QColor(theme.color("muted")), 1.5)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -103,6 +108,7 @@ class Sidebar(QWidget):
         self.nav: dict[str, NavItem] = {
             "download": NavItem("다운로드", "download.svg"),
             "settings": NavItem("설정", "gear.svg", chevron=True),
+            "update": NavItem("업데이트", "update.svg"),
         }
         self._children = QWidget()
         child_box = QVBoxLayout(self._children)
@@ -121,6 +127,12 @@ class Sidebar(QWidget):
         box.addWidget(self.nav["settings"])
         box.addWidget(self._children)
         box.addStretch(1)
+        box.addWidget(self.nav["update"])
+        box.addSpacing(6)
+        self.version_label = QLabel(f"버전 {__version__}")
+        self.version_label.setObjectName("navVersion")
+        self.version_label.setContentsMargins(12, 0, 0, 0)
+        box.addWidget(self.version_label)
 
         for key, item in self.nav.items():
             # lambda 로 self 를 붙잡으면 메뉴가 지워지지 않고 앱이 끝날 때 죽으므로 bound method 로 잇는다
@@ -144,6 +156,10 @@ class Sidebar(QWidget):
         self._refresh()
         if changed:
             self.page_changed.emit(key)
+
+    def set_dot(self, key: str, on: bool) -> None:
+        self.nav[key].dot = on
+        self.nav[key].update()
 
     def _on_item_clicked(self) -> None:
         key = self.sender().key

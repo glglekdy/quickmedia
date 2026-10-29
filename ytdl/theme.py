@@ -163,6 +163,7 @@ QScrollArea, #queueHolder, #settingsHolder { background: $bg; border: none; }
 #percent { color: $percent; font-size: 12px; font-weight: 600; }
 #dock { background: $surface; border-top: 1px solid $border; }
 #sidebar { background: $surface; border-right: 1px solid $border; }
+#navVersion { color: $muted; font-size: 11px; }
 #emptyState { color: $muted; font-size: 14px; padding: 32px; }
 QProgressBar { border: none; border-radius: 3px; background: $track; max-height: 6px; }
 QProgressBar::chunk { background: $accent; border-radius: 3px; }
