@@ -74,6 +74,7 @@ dependencies {
     implementation(libs.youtubedl.ffmpeg)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     // 안드로이드의 org.json 은 JVM 단위 테스트에서 빈 껍데기다
     testImplementation(libs.json)
 }
