@@ -87,7 +87,7 @@ fun ListScreen(onGoReceive: () -> Unit, say: (String) -> Unit, contentPadding: P
             }
         }
         if (groups.isEmpty()) {
-            item("empty") { Empty(filter, onGoReceive) }
+            item("empty") { Empty(filter, onGoReceive, Modifier.animateItem()) }
         }
         groups.forEach { group ->
             group.title?.let { title ->
@@ -97,11 +97,12 @@ fun ListScreen(onGoReceive: () -> Unit, say: (String) -> Unit, contentPadding: P
                         color = c.textDim,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 14.dp, bottom = 2.dp),
+                        modifier = Modifier.animateItem().padding(top = 14.dp, bottom = 2.dp),
                     )
                 }
             }
             items(group.jobs, key = { it.id }) { job ->
+                // 새로 들어오고, 지워지고, 받는 중 → 끝남 으로 옮길 때 미끄러지며 자리를 잡는다
                 JobRow(
                     job,
                     (previews[job.url] as? PreviewState.Ready)?.preview,
@@ -113,6 +114,7 @@ fun ListScreen(onGoReceive: () -> Unit, say: (String) -> Unit, contentPadding: P
                             Previews.load(job.url)
                         }
                     },
+                    modifier = Modifier.animateItem(),
                 )
             }
         }
@@ -120,10 +122,10 @@ fun ListScreen(onGoReceive: () -> Unit, say: (String) -> Unit, contentPadding: P
 }
 
 @Composable
-private fun Empty(filter: JobFilter, onGoReceive: () -> Unit) {
+private fun Empty(filter: JobFilter, onGoReceive: () -> Unit, modifier: Modifier) {
     val c = Qm.colors
     Column(
-        Modifier.fillMaxWidth().padding(top = 80.dp),
+        modifier.fillMaxWidth().padding(top = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

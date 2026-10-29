@@ -7,10 +7,16 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -179,45 +185,59 @@ fun ReceiveScreen(
             )
         }
 
-        QmField(
-            value = link,
-            onChange = {
-                onLinkChange(it, false)
-                linkError = null
-            },
-            placeholder = "영상·재생목록 링크를 붙여넣으세요",
-            error = linkError,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { download() }),
-            trailing = {
-                if (link.isEmpty()) {
-                    Text(
-                        "붙여넣기",
-                        color = c.accentText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clip(CircleShape).clickable(onClick = ::paste).padding(10.dp),
-                    )
+        // 링크 칸과 미리보기를 한 묶음으로 둔다. 미리보기가 없을 때 빈 간격이 생기지 않고, 나타날 때 높이가 같이 늘어난다.
+        Column {
+            QmField(
+                value = link,
+                onChange = {
+                    onLinkChange(it, false)
+                    linkError = null
+                },
+                placeholder = "영상·재생목록 링크를 붙여넣으세요",
+                error = linkError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(onGo = { download() }),
+                trailing = {
+                    if (link.isEmpty()) {
+                        Text(
+                            "붙여넣기",
+                            color = c.accentText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clip(CircleShape).clickable(onClick = ::paste).padding(10.dp),
+                        )
+                    } else {
+                        Icon(
+                            painterResource(R.drawable.ic_close),
+                            contentDescription = "지우기",
+                            tint = c.textDim,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { onLinkChange("", false) }
+                                .padding(12.dp)
+                                .size(16.dp),
+                        )
+                    }
+                },
+            )
+            val slot = url?.takeIf { tools !is Tools.Failed }?.let { it to previews[it] }
+            AnimatedContent(
+                slot,
+                contentKey = { it?.let { (u, state) -> "$u:${kindOf(state)}" } },
+                transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(120)) },
+                label = "preview",
+            ) { shown ->
+                if (shown == null) {
+                    Box(Modifier.fillMaxWidth())
                 } else {
-                    Icon(
-                        painterResource(R.drawable.ic_close),
-                        contentDescription = "지우기",
-                        tint = c.textDim,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable { onLinkChange("", false) }
-                            .padding(12.dp)
-                            .size(16.dp),
-                    )
+                    Box(Modifier.padding(top = 12.dp)) {
+                        when (val state = shown.second) {
+                            is PreviewState.Ready -> PreviewCard(state.preview)
+                            PreviewState.Failed -> PreviewFailed()
+                            PreviewState.Loading, null -> PreviewSkeleton()
+                        }
+                    }
                 }
-            },
-        )
-
-        if (url != null && tools !is Tools.Failed) {
-            when (val state = previews[url]) {
-                is PreviewState.Ready -> PreviewCard(state.preview)
-                PreviewState.Failed -> PreviewFailed()
-                PreviewState.Loading, null -> PreviewSkeleton()
             }
         }
 
@@ -262,6 +282,12 @@ fun ReceiveScreen(
     }
 
     if (sheet) OptionsSheet(options, errors, ::change, onDismiss = { sheet = false })
+}
+
+private fun kindOf(state: PreviewState?) = when (state) {
+    is PreviewState.Ready -> "ready"
+    PreviewState.Failed -> "failed"
+    PreviewState.Loading, null -> "loading"
 }
 
 /** 안드로이드 13+ 에서 처음 받을 때 한 번만 알림 권한을 묻는다. 거절해도 다운로드는 된다. */

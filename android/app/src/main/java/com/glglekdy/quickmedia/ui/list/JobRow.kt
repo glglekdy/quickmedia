@@ -1,5 +1,13 @@
 package com.glglekdy.quickmedia.ui.list
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import android.app.DownloadManager
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -50,15 +58,25 @@ import com.glglekdy.quickmedia.options.describe
 import com.glglekdy.quickmedia.preview.Preview
 import com.glglekdy.quickmedia.ui.components.Thumbnail
 import com.glglekdy.quickmedia.ui.theme.AccentGradient
+import com.glglekdy.quickmedia.ui.theme.Motion
 import com.glglekdy.quickmedia.ui.theme.Qm
+
+private enum class Action { CANCEL, OPEN, RETRY }
 
 /** 목록 한 줄: 썸네일, 제목, 상태, 진행 막대, 오른쪽 버튼(취소·열기·다시 받기). */
 @Composable
-fun JobRow(job: Job, preview: Preview?, onCancel: () -> Unit, onOpen: () -> Unit, onRetry: () -> Unit) {
+fun JobRow(
+    job: Job,
+    preview: Preview?,
+    onCancel: () -> Unit,
+    onOpen: () -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val c = Qm.colors
     val active = job.state == JobState.QUEUED || job.state == JobState.RUNNING
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .clickable(enabled = job.state == JobState.DONE, onClick = onOpen)
@@ -91,10 +109,25 @@ fun JobRow(job: Job, preview: Preview?, onCancel: () -> Unit, onOpen: () -> Unit
             )
             if (job.state == JobState.RUNNING) ProgressBar(job.percent, Modifier.padding(top = 7.dp))
         }
-        when {
-            active -> RoundButton(R.drawable.ic_close, "취소", onCancel)
-            job.state == JobState.DONE -> RoundButton(R.drawable.ic_play, "열기", onOpen)
-            else -> RoundButton(R.drawable.ic_retry, "다시 받기", onRetry)
+        val button = when {
+            active -> Action.CANCEL
+            job.state == JobState.DONE -> Action.OPEN
+            else -> Action.RETRY
+        }
+        // ✕ 가 ▶ 나 ↻ 로 바뀔 때 작아졌다 커지며 바뀐다
+        AnimatedContent(
+            button,
+            transitionSpec = {
+                (fadeIn(Motion.fade()) + scaleIn(Motion.slide(), initialScale = 0.6f)) togetherWith
+                    (fadeOut(Motion.fade()) + scaleOut(Motion.fade(), targetScale = 0.6f))
+            },
+            label = "jobAction",
+        ) { action ->
+            when (action) {
+                Action.CANCEL -> RoundButton(R.drawable.ic_close, "취소", onCancel)
+                Action.OPEN -> RoundButton(R.drawable.ic_play, "열기", onOpen)
+                Action.RETRY -> RoundButton(R.drawable.ic_retry, "다시 받기", onRetry)
+            }
         }
     }
 }
@@ -121,8 +154,10 @@ private fun status(job: Job) = buildAnnotatedString {
 private fun ProgressBar(percent: Float, modifier: Modifier) {
     val c = Qm.colors
     BoxWithConstraints(modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(c.field)) {
+        // 퍼센트가 띄엄띄엄 와도 막대는 이어서 찬다
+        val shown by animateFloatAsState(percent / 100f, tween(400, easing = LinearOutSlowInEasing), label = "percent")
         if (percent > 0f) {
-            Box(Modifier.fillMaxHeight().fillMaxWidth(percent / 100f).clip(CircleShape).background(AccentGradient))
+            Box(Modifier.fillMaxHeight().fillMaxWidth(shown).clip(CircleShape).background(AccentGradient))
         } else {
             val x by rememberInfiniteTransition(label = "progress").animateFloat(
                 initialValue = 0f,

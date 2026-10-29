@@ -2,10 +2,14 @@ package com.glglekdy.quickmedia.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -40,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glglekdy.quickmedia.download.Jobs
@@ -49,6 +54,7 @@ import com.glglekdy.quickmedia.ui.list.ListScreen
 import com.glglekdy.quickmedia.ui.list.jobCounts
 import com.glglekdy.quickmedia.ui.receive.ReceiveScreen
 import com.glglekdy.quickmedia.ui.settings.SettingsScreen
+import com.glglekdy.quickmedia.ui.theme.Motion
 import com.glglekdy.quickmedia.ui.theme.Qm
 import com.glglekdy.quickmedia.update.Release
 import com.glglekdy.quickmedia.update.UpdateException
@@ -120,7 +126,17 @@ fun AppShell(shared: ReceiveChannel<String?>, launched: Boolean) {
 
     Box(Modifier.fillMaxSize().background(c.bg)) {
         Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
-            Crossfade(tab, animationSpec = tween(180), label = "tab") { shown ->
+            AnimatedContent(
+                tab,
+                transitionSpec = {
+                    // 메뉴에서 오른쪽 탭으로 가면 새 화면이 오른쪽에서 살짝 밀려 들어온다
+                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    val spec = tween<IntOffset>(Motion.TAB_MS, easing = FastOutSlowInEasing)
+                    (fadeIn(tween(Motion.TAB_MS)) + slideInHorizontally(spec) { dir * it / 10 }) togetherWith
+                        (fadeOut(tween(Motion.TAB_MS / 2)) + slideOutHorizontally(spec) { -dir * it / 10 })
+                },
+                label = "tab",
+            ) { shown ->
                 when (shown) {
                     Tab.RECEIVE -> ReceiveScreen(
                         link = link,
