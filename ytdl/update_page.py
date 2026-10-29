@@ -11,9 +11,10 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QFont, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
-    QApplication, QFrame, QHBoxLayout, QLabel, QProgressBar, QPushButton, QScrollArea, QTextBrowser,
-    QVBoxLayout, QWidget,
+    QApplication, QFrame, QHBoxLayout, QLabel, QProgressBar, QPushButton, QScrollArea, QSizePolicy,
+    QTextBrowser, QVBoxLayout, QWidget,
 )
 
 from . import __version__, updater
@@ -97,35 +98,36 @@ class UpdatePage(QWidget):
 
         card = QFrame()
         card.setObjectName("settingsCard")
+        # 숨긴 칸은 간격도 차지하지 않도록 고정 간격 대신 레이아웃 간격을 쓴다
         box = QVBoxLayout(card)
         box.setContentsMargins(20, 18, 20, 18)
-        box.setSpacing(0)
+        box.setSpacing(14)
+        head = QVBoxLayout()
+        head.setSpacing(2)
         self.title = QLabel()
         self.title.setObjectName("updateTitle")
-        box.addWidget(self.title)
+        head.addWidget(self.title)
         self.sub = QLabel()
         self.sub.setWordWrap(True)
-        box.addSpacing(2)
-        box.addWidget(self.sub)
+        head.addWidget(self.sub)
+        box.addLayout(head)
         self.notes = QTextBrowser()
         self.notes.setObjectName("updateNotes")
         self.notes.setOpenExternalLinks(True)
-        self.notes.setMaximumHeight(220)
-        box.addSpacing(14)
         box.addWidget(self.notes)
         self.bar = QProgressBar()
         self.bar.setTextVisible(False)
-        box.addSpacing(14)
         box.addWidget(self.bar)
-        box.addSpacing(16)
         row = QHBoxLayout()
         row.setSpacing(10)
         self.action = QPushButton()
+        self.action.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.action.clicked.connect(self._on_action)
         row.addWidget(self.action)
         self.status = QLabel()
         self.status.setWordWrap(True)
         row.addWidget(self.status, 1)
+        row.addStretch(0)  # 안내 줄이 숨어도 단추가 가운데로 가지 않게
         box.addLayout(row)
         col.addWidget(card)
         col.addStretch(1)
@@ -202,8 +204,36 @@ class UpdatePage(QWidget):
 
     def _on_found(self, release) -> None:
         self.release = release
-        self.notes.setMarkdown(release.notes)
+        self._set_notes(release.notes)
         self._set_state("available")
+
+    def _set_notes(self, markdown: str) -> None:
+        """릴리스 설명. 마크다운 제목은 Qt 기본값이 너무 커서 본문보다 조금 굵은 13px 로 줄인다."""
+        self.notes.setMarkdown(markdown)
+        doc = self.notes.document()
+        fmt = QTextCharFormat()
+        fmt.setFontWeight(QFont.Weight.DemiBold)
+        fmt.setProperty(QTextCharFormat.Property.FontPixelSize, 13)
+        block = doc.firstBlock()
+        while block.isValid():
+            if block.blockFormat().headingLevel():
+                cursor = QTextCursor(block)
+                cursor.select(QTextCursor.SelectionType.BlockUnderCursor)
+                cursor.setCharFormat(fmt)  # 덮어써야 마크다운이 붙인 point 크기가 빠진다
+            block = block.next()
+        self._fit_notes()
+
+    def _fit_notes(self) -> None:
+        """내용만큼만 높이를 잡는다(최대 220, 넘치면 그 안에서 스크롤)."""
+        doc = self.notes.document()
+        doc.setTextWidth(self.notes.viewport().width())
+        frame = self.notes.height() - self.notes.viewport().height()
+        self.notes.setFixedHeight(min(220, int(doc.size().height()) + frame))
+
+    def resizeEvent(self, e) -> None:
+        super().resizeEvent(e)
+        if self.release is not None:
+            self._fit_notes()
 
     def _on_latest(self) -> None:
         self._set_state("latest")

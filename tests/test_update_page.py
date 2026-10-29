@@ -165,3 +165,31 @@ def test_page_is_garbage_collected(qapp, env):
     del page
     gc.collect()
     assert ref() is None
+
+
+def test_short_notes_fit_and_small_headings(qapp, env):
+    page = make()
+    page.resize(752, 600)
+    page.show()
+    page._on_found(REL)
+    qapp.processEvents()
+    assert page.notes.height() < 120  # 내용이 짧으면 220 까지 늘리지 않는다
+    block = page.notes.document().firstBlock()
+    assert block.blockFormat().headingLevel() == 2
+    frag = block.begin().fragment()
+    assert frag.charFormat().font().pixelSize() == 13 and frag.charFormat().font().pointSizeF() < 0
+    page.hide()
+
+
+def test_action_button_keeps_its_size(qapp, env):
+    def fail():
+        raise updater.UpdateError("GitHub 에 연결하지 못했어요.")
+    env["fetch"] = fail
+    page = make()
+    page.resize(752, 600)
+    page.show()
+    page.check()
+    run(qapp, page)
+    assert page.action.width() < 200  # 안내 줄이 없어도 카드 폭만큼 늘어나지 않는다
+    assert page.action.geometry().left() == page.title.geometry().left()  # 혼자여도 왼쪽에
+    page.hide()
