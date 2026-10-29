@@ -70,6 +70,10 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.haze)
+    implementation(libs.haze.blur)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(libs.youtubedl.library)
     implementation(libs.youtubedl.ffmpeg)
 

@@ -15,7 +15,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.glglekdy.quickmedia.download.extractLink
 import com.glglekdy.quickmedia.ui.MainScreen
-import com.glglekdy.quickmedia.ui.QuickMediaTheme
+import com.glglekdy.quickmedia.ui.theme.QuickMediaTheme
 import com.glglekdy.quickmedia.ui.SettingsScreen
 import com.glglekdy.quickmedia.ui.UpdateDialog
 import com.glglekdy.quickmedia.update.Release
