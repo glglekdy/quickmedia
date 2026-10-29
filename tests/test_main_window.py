@@ -122,3 +122,8 @@ def test_icons_follow_saved_proxy(qapp, tmp_path):
     s.setValue("settings/proxy", "http://127.0.0.1:8080")
     w = mw.MainWindow(settings=s, data_dir=tmp_path)
     assert w.icons.proxy == "http://127.0.0.1:8080"
+
+
+def test_default_window_is_landscape(win):
+    # 처음 열 때 가로로 긴 창
+    assert (win.width(), win.height()) == (920, 640)
