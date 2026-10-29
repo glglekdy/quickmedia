@@ -161,3 +161,41 @@ def test_window_size(win):
 def test_default_window_is_landscape(win):
     # 처음 열 때 가로로 긴 창
     assert (win.width(), win.height()) == (920, 640)
+
+
+def test_menu_opens_update_page(win):
+    win.sidebar.nav["update"].click()
+    assert win.stack.currentWidget() is win.pages["update"] is win.update_page
+
+
+def test_update_dot_follows_page(win):
+    win.update_page.available_changed.emit(True)
+    assert win.sidebar.nav["update"].dot
+    win.update_page.available_changed.emit(False)
+    assert not win.sidebar.nav["update"].dot
+
+
+def test_confirm_without_jobs(win, monkeypatch):
+    asked = []
+    monkeypatch.setattr(mw.QMessageBox, "question", lambda *a, **k: asked.append(a))
+    assert win._confirm_update() is True and asked == []
+
+
+def test_confirm_with_jobs(win, monkeypatch):
+    asked = []
+
+    def question(parent, title, text, *rest):
+        asked.append(text)
+        return mw.QMessageBox.StandardButton.No
+    monkeypatch.setattr(mw.QMessageBox, "question", question)
+    win.url.setText("https://x.com/v")
+    win.add_job()
+    assert win._confirm_update() is False
+    assert asked == ["받는 중인 영상 1개가 멈춰요. 그래도 업데이트할까요?"]
+
+
+def test_close_stops_update_download(win, monkeypatch):
+    stopped = []
+    monkeypatch.setattr(win.update_page, "stop", lambda: stopped.append(1))
+    win.close()
+    assert stopped == [1]

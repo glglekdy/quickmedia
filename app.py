@@ -7,7 +7,6 @@ from PySide6.QtWidgets import QApplication
 
 from ytdl import app_info, migrate, theme
 from ytdl.main_window import MainWindow
-from ytdl.update_dialog import check_on_startup
 
 ICON = Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / "ytdl" / "assets" / "icon.png"
 
@@ -20,7 +19,7 @@ def main() -> None:
     migrate.run()
     win = MainWindow()
     win.show()
-    check_on_startup(win)
+    win.update_page.check()  # 뒤에서 확인. 새 버전이면 메뉴에 빨간 점만
     sys.exit(app.exec())
 
 

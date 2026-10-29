@@ -1,4 +1,4 @@
-"""메인 창: 왼쪽 메뉴 | 화면(다운로드 · 설정 4개).
+"""메인 창: 왼쪽 메뉴 | 화면(다운로드 · 설정 4개 · 업데이트).
 
 다운로드 화면은 링크 입력 · 형식 고르기 · 세부 옵션 · 다운로드 목록 · 저장 위치 독.
 """
@@ -27,6 +27,7 @@ from .options import (
 from .options_panel import OptionsPanel
 from .settings_pages import PAGES, SettingsModel, SettingsPage
 from .sidebar import Sidebar
+from .update_page import UpdatePage
 from .theme import ASSETS
 from .site import SiteIcons, display_name, domain_of
 
@@ -340,8 +341,12 @@ class MainWindow(QMainWindow):
         for key, cls in PAGES.items():
             self.pages[key] = cls(self.settings_model)
             self.stack.addWidget(self.pages[key])
+        self.update_page = UpdatePage(confirm=self._confirm_update)
+        self.pages["update"] = self.update_page
+        self.stack.addWidget(self.update_page)
         self.sidebar = Sidebar()
         self.sidebar.page_changed.connect(self._show_page)
+        self.update_page.available_changed.connect(self._update_dot)
         shell = QWidget()
         row = QHBoxLayout(shell)
         row.setContentsMargins(0, 0, 0, 0)
@@ -393,6 +398,17 @@ class MainWindow(QMainWindow):
         page = self.stack.currentWidget()
         if isinstance(page, SettingsPage):
             page.leave()
+
+    def _update_dot(self, on: bool) -> None:
+        self.sidebar.set_dot("update", on)
+
+    def _confirm_update(self) -> bool:
+        """업데이트하면 앱이 꺼지므로 받고 있거나 기다리는 영상이 있으면 묻는다."""
+        n = len(self.jobs.running) + len(self.jobs.pending)
+        if not n:
+            return True
+        answer = QMessageBox.question(self, "업데이트", f"받는 중인 영상 {n}개가 멈춰요. 그래도 업데이트할까요?")
+        return answer == QMessageBox.StandardButton.Yes
 
     def _settings_changed(self, s: AppSettings) -> None:
         self.app_settings = s
@@ -505,6 +521,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, e) -> None:
         self._leave_settings_page()
+        self.update_page.stop()
         # Windows 의 terminate() 는 finished 를 바로 내보내므로 먼저 표시해 둔다
         self._closing = True
         for job in self.jobs.running:
