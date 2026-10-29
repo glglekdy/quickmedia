@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 알림 줄의 작은 아이콘. ic_launcher_foreground 와 같은 도형을 24dp 가운데에 놓았다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8.96,4.58 L8.96,12.74 L15.68,8.66 Z M10.76,13.7 h1.68 v2.88 h-1.68 Z M8.24,16.1 L14.96,16.1 L11.6,19.46 Z" />
+</vector>

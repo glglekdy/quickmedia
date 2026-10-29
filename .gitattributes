@@ -1,0 +1,4 @@
+# gradlew 는 리눅스(CI)와 git bash 에서 실행되므로 LF 로 둔다
+android/gradlew text eol=lf
+*.bat text eol=crlf
+*.so binary

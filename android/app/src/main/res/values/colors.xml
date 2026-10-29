@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 데스크톱 아이콘과 같은 빨강 (tools/make_icon.py) -->
+    <color name="ic_launcher_background">#DC2626</color>
+    <color name="bg">#F6F6F8</color>
+</resources>

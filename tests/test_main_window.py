@@ -156,3 +156,8 @@ def test_close_saves_pending_text(win):
 
 def test_window_size(win):
     assert (win.minimumWidth(), win.minimumHeight()) == (690, 480)
+
+
+def test_default_window_is_landscape(win):
+    # 처음 열 때 가로로 긴 창
+    assert (win.width(), win.height()) == (920, 640)

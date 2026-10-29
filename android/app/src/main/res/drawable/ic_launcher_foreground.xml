@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- tools/make_icon.py 의 재생 버튼과 다운로드 화살표. 데스크톱 아이콘의 빨간 사각형(0.06~0.94)을
+     적응형 아이콘의 보이는 영역(18~90dp)에 맞춰 옮겼다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,31.09 L45,58.91 L67.91,45 Z M51.14,62.18 h5.72 v9.82 h-5.72 Z M42.55,70.36 L65.45,70.36 L54,81.82 Z" />
+</vector>

@@ -1,6 +1,7 @@
 # v* 태그를 push 하면 설치 파일(QuickMedia-Setup-<버전>.exe)을 빌드해 GitHub 릴리즈로 올린다.
 # 설치된 앱은 시작할 때 releases/latest 를 보고 새 설치 파일로 스스로 업데이트한다.
 # 옛 유튜브 다운로더는 릴리즈의 첫 .exe 를 받으므로 exe 는 설치 파일 하나만 올린다.
+# 안드로이드 APK(QuickMedia-<버전>.apk)는 android 작업이 같은 릴리즈에 더한다. 앱도 releases/latest 를 본다.
 #
 # 릴리즈 설명은 release-notes/<태그>.md 를 쓴다. 없으면 빌드하지 않는다.
 #
@@ -66,3 +67,38 @@ jobs:
           files: dist/QuickMedia-Setup-*.exe
           # 설명은 사람이 쓴 업데이트 내용. 앱의 업데이트 안내 창에 그대로 보인다.
           body_path: release-notes/${{ github.ref_name }}.md
+
+  # build 가 릴리즈를 만든 뒤에 같은 릴리즈에 APK 를 더한다. 동시에 만들다 릴리즈가 둘로 갈라지지 않게.
+  android:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: 키스토어
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: 시험과 빌드
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          ./gradlew testDebugUnitTest assembleRelease -PappVersion="$v"
+          mv app/build/outputs/apk/release/app-release.apk "QuickMedia-$v.apk"
+
+      - name: 릴리즈에 APK 더하기
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/QuickMedia-*.apk
+          # 설명은 build 작업이 release-notes/<태그>.md 로 이미 채웠다. 여기서는 파일만 더한다.

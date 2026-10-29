@@ -181,7 +181,7 @@ class MainWindow(QMainWindow):
     def __init__(self, settings: QSettings | None = None, data_dir: Path | None = None):
         super().__init__()
         self.setWindowTitle(NAME)
-        self.resize(800, 680)
+        self.resize(920, 640)
         self.setMinimumSize(690, 480)
         self.settings = settings if settings is not None else QSettings(*SETTINGS)
         if data_dir is None:
