@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuickMedia 업데이트 화면 시안</title>
+<!-- 브레인스토밍에서 승인한 시안. 브라우저로 열면 단추로 상태를 바꿔 볼 수 있다. -->
+<style>
+  :root { --bg-primary:#f5f5f7; --bg-secondary:#fff; --border:#d1d1d6; --text-primary:#1d1d1f; --text-secondary:#86868b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg-primary:#1d1d1f; --bg-secondary:#2d2d2f; --border:#424245; --text-primary:#f5f5f7; }
+  }
+  body { margin:0; padding:2rem; font-family:system-ui,-apple-system,sans-serif; background:var(--bg-primary);
+         color:var(--text-primary); line-height:1.5; }
+  h2 { font-size:1.5rem; font-weight:600; margin:0 0 .5rem; }
+  h3 { font-size:1.1rem; font-weight:600; margin:0 0 .25rem; }
+  .subtitle { color:var(--text-secondary); margin:0 0 1.5rem; }
+</style>
+</head>
+<body>
+<style>
+  /* 지금 앱(theme.py)의 색 토큰 그대로 */
+  .qm { --bg:#f5f5f5; --surface:#fff; --border:#e5e5e5; --text:#1f1f1f; --heading:#141414; --muted:#737373;
+        --btn:#ebebeb; --btn-hover:#e0e0e0; --dis-fg:#a3a3a3; --dis-bg:#f0f0f0; --input:#ebebeb; --input-focus:#fff;
+        --card:#fff; --track:#e5e5e5; --pct:#b91c1c; --accent:#dc2626; --danger:#dc2626; --success:#16a34a;
+        --titlebar:#f3f3f3; --nav-hover:#f0f0f0; }
+  .qm.dark { --bg:#141414; --surface:#1c1c1c; --border:#2e2e2e; --text:#e6e6e6; --heading:#f0f0f0; --muted:#8c8c8c;
+             --btn:#2c2c2c; --btn-hover:#333; --dis-fg:#5c5c5c; --dis-bg:#1f1f1f; --input:#2c2c2c; --input-focus:#2c2c2c;
+             --card:#232323; --track:#2c2c2c; --pct:#f87171; --accent:#dc2626; --danger:#ef4444; --success:#22c55e;
+             --titlebar:#202020; --nav-hover:#232323; }
+
+  .fw-top { display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem; }
+  .fw-top button { border:1px solid var(--border); background:var(--bg-secondary); color:var(--text-primary);
+                   border-radius:8px; padding:.4rem .8rem; cursor:pointer; font-size:.85rem; }
+  .fw-top label { font-size:.85rem; display:flex; align-items:center; gap:.35rem; cursor:pointer; }
+  .fw-wrap { display:grid; grid-template-columns:800px minmax(260px,1fr); gap:1.5rem; align-items:start; }
+  @media (max-width: 1200px) { .fw-wrap { grid-template-columns:1fr; } }
+  .fw-notes { background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:1rem 1.2rem; font-size:.88rem; }
+  .fw-notes h3 { font-size:.95rem; margin-bottom:.5rem; }
+  .fw-notes ul { margin:0 0 .8rem 1.1rem; }
+  .fw-notes li { margin:.25rem 0; }
+  .fw-notes .dim { color:var(--text-secondary); }
+
+  /* ---------- 앱 창 (실제 크기) ---------- */
+  .qm.q-win { width:920px; max-width:100%; height:640px; border-radius:8px; overflow:hidden; border:1px solid var(--border);
+              box-shadow:0 10px 30px rgba(0,0,0,.15); display:flex; flex-direction:column; background:var(--bg);
+              font-family:"Pretendard","Malgun Gothic","Segoe UI",sans-serif; font-size:13px; color:var(--text); line-height:1.4; }
+  .qm .q-tb { height:32px; flex-shrink:0; background:var(--titlebar); display:flex; align-items:center; gap:8px; padding:0 0 0 12px;
+              font-size:12px; color:var(--text); border-bottom:1px solid var(--border); }
+  .qm .q-tb i { width:14px; height:14px; border-radius:3px; background:#dc2626; }
+  .qm .q-tb .ctl { margin-left:auto; display:flex; }
+  .qm .q-tb .ctl span { width:46px; text-align:center; color:var(--muted); font-size:11px; }
+  .qm .q-body { flex:1; display:flex; min-height:0; }
+
+  /* 왼쪽 메뉴 */
+  .qm .q-side { width:168px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border);
+                padding:12px 8px; display:flex; flex-direction:column; gap:2px; user-select:none; }
+  .qm .q-nav { height:34px; padding:0 10px; border-radius:6px; display:flex; align-items:center; gap:10px; cursor:pointer;
+               position:relative; color:var(--text); font-weight:500; }
+  .qm .q-nav:hover { background:var(--nav-hover); }
+  .qm .q-nav svg { width:16px; height:16px; color:var(--muted); flex-shrink:0; }
+  .qm .q-nav.on { background:var(--btn); font-weight:600; }
+  .qm .q-nav.on svg { color:var(--text); }
+  .qm .q-nav.on::before { content:""; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:2px; background:var(--accent); }
+  .qm .q-kid { padding-left:36px; }
+  .qm .q-chev { margin-left:auto; width:14px !important; height:14px !important; transition:transform .2s cubic-bezier(.33,1,.68,1); }
+  .qm .q-grp.open .q-chev { transform:rotate(90deg); }
+  .qm .q-kids { display:grid; grid-template-rows:0fr; transition:grid-template-rows .2s cubic-bezier(.33,1,.68,1); }
+  .qm .q-grp.open .q-kids { grid-template-rows:1fr; }
+  .qm .q-kids > div { overflow:hidden; display:flex; flex-direction:column; gap:2px; padding-top:2px; }
+
+  /* 오른쪽 화면 */
+  .qm .q-main { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .qm .q-page { flex:1; min-height:0; display:flex; flex-direction:column; }
+  .qm .q-page[hidden] { display:none; }
+  .qm .q-scroll { flex:1; overflow:auto; padding:24px 28px; }
+  .qm .q-head { display:flex; align-items:baseline; gap:10px; }
+  .qm .q-title { font-size:22px; font-weight:600; color:var(--heading); }
+  .qm .q-saved { color:var(--success); font-size:12px; opacity:0; transition:opacity .2s; }
+  .qm .q-saved.show { opacity:1; }
+  .qm .q-desc { color:var(--muted); font-size:12px; margin-top:4px; }
+
+  .qm .q-box { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin-top:16px; }
+  .qm .q-grid { display:grid; grid-template-columns:112px minmax(0,400px); column-gap:16px; row-gap:14px; align-items:start; }
+  .qm .q-grid.wide { grid-template-columns:160px minmax(0,380px); }
+  .qm .q-lab { padding-top:8px; font-weight:500; }
+  .qm .q-hint { color:var(--muted); font-size:12px; margin-top:5px; }
+  .qm .q-err { color:var(--danger); font-size:12px; margin-top:5px; }
+  .qm .q-err[hidden] { display:none; }
+
+  .qm .q-in { font:inherit; font-weight:500; color:var(--text); background:var(--input); border:1px solid transparent; border-radius:6px;
+              padding:7px 10px; width:100%; box-sizing:border-box; outline:none; }
+  .qm .q-in::placeholder { color:var(--muted); font-weight:500; }
+  .qm .q-in:focus { border-color:var(--accent); background:var(--input-focus); }
+  .qm .q-in:disabled { color:var(--dis-fg); }
+  .qm .q-in:disabled::placeholder { color:var(--dis-fg); }
+  .qm .q-in.bad { border-color:var(--danger); }
+  .qm .q-in.short { width:140px; }
+  .qm .q-in.num { width:90px; }
+  .qm select.q-in { appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:28px;
+                    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238c8c8c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+                    background-repeat:no-repeat; background-position:right 10px center; }
+  .qm select.q-in.mid { width:180px; }
+  .qm .q-row { display:flex; gap:6px; align-items:center; }
+
+  .qm .q-btn { font:inherit; font-weight:500; color:var(--text); background:var(--btn); border:none; border-radius:6px; padding:7px 12px;
+               cursor:pointer; white-space:nowrap; }
+  .qm .q-btn:hover { background:var(--btn-hover); }
+  .qm .q-btn:disabled { color:var(--dis-fg); background:var(--dis-bg); cursor:default; }
+  .qm .q-btn.primary { background:var(--accent); color:#fff; font-weight:600; padding:7px 18px; }
+  .qm .q-btn.ghost { background:transparent; color:var(--muted); padding:4px 8px; }
+
+  .qm input[type=radio], .qm input[type=checkbox] { appearance:none; -webkit-appearance:none; margin:0; width:14px; height:14px; flex-shrink:0;
+              border:1px solid var(--dis-fg); background:var(--input-focus); cursor:pointer; }
+  .qm input[type=radio] { border-radius:50%; }
+  .qm input[type=radio]:checked { border:5px solid var(--accent); }
+  .qm input[type=checkbox] { border-radius:4px; }
+  .qm input[type=checkbox]:checked { background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/10px no-repeat; border-color:var(--accent); }
+  .qm .q-choice { display:flex; align-items:center; gap:8px; cursor:pointer; padding-top:7px; font-weight:500; }
+  .qm .q-sub { padding-left:22px; }
+
+  /* 다운로드 화면 (지금 메인 창 그대로, ⚙ 만 빠짐) */
+  .qm .d-head { padding:24px 28px 8px; }
+  .qm .d-form { padding:12px 28px 16px; display:flex; flex-direction:column; gap:10px; }
+  .qm .d-seg { background:var(--input); border-radius:6px; padding:3px; display:flex; gap:2px; }
+  .qm .d-seg span { padding:6px 14px; border-radius:4px; color:var(--muted); }
+  .qm .d-seg .on { background:var(--btn-hover); color:var(--text); font-weight:600; }
+  .qm .d-listhead { padding:4px 28px 6px; display:flex; align-items:center; color:var(--muted); font-size:12px; font-weight:500; }
+  .qm .d-list { flex:1; overflow:auto; padding:0 28px 16px; display:flex; flex-direction:column; gap:8px; }
+  .qm .d-job { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 14px 12px; display:flex; flex-direction:column; gap:6px; }
+  .qm .d-site { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11px; }
+  .qm .d-site i { width:16px; height:16px; border-radius:50%; background:#dc2626; color:#fff; font-style:normal; font-size:9px; font-weight:700;
+                  display:flex; align-items:center; justify-content:center; }
+  .qm .d-title { display:flex; justify-content:space-between; align-items:center; font-weight:500; }
+  .qm .d-pct { color:var(--pct); font-size:12px; font-weight:600; }
+  .qm .d-bar { height:6px; background:var(--track); border-radius:3px; overflow:hidden; }
+  .qm .d-bar b { display:block; height:100%; background:var(--accent); border-radius:3px; }
+  .qm .d-st { color:var(--muted); font-size:12px; }
+  .qm .d-st.ok { color:var(--success); }
+  .qm .d-st.err { color:var(--danger); }
+  .qm .d-dock { background:var(--surface); border-top:1px solid var(--border); padding:12px 28px; display:flex; align-items:center; gap:6px; }
+</style>
+<style>
+  .fw-wrap { grid-template-columns:920px minmax(240px,1fr); }
+  .qm .q-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); margin-left:auto; }
+  .qm .q-side .grow { flex:1; }
+  .qm .q-ver { color:var(--muted); font-size:11px; padding:6px 10px 0; }
+  .qm [hidden] { display:none !important; }
+  .qm .u-big { font-size:15px; font-weight:600; color:var(--heading); }
+  .qm .u-sub { color:var(--muted); font-size:12px; margin-top:2px; }
+  .qm .u-notes { margin-top:14px; border-top:1px solid var(--border); padding-top:12px; max-height:220px; overflow:auto; }
+  .qm .u-notes h4 { margin:0 0 6px; font-size:13px; }
+  .qm .u-notes ul { margin:0 0 8px 18px; padding:0; }
+  .qm .u-notes li { margin:3px 0; }
+  .qm .u-actions { display:flex; align-items:center; gap:10px; margin-top:16px; }
+  .qm .u-status { color:var(--muted); font-size:12px; }
+  .qm .u-bar { height:6px; background:var(--track); border-radius:3px; overflow:hidden; margin-top:14px; }
+  .qm .u-bar b { display:block; height:100%; width:42%; background:var(--accent); border-radius:3px; }
+</style>
+
+<h2>업데이트 화면</h2>
+<p class="subtitle">위 단추로 메뉴 위치(A/B)와 화면 상태를 바꿔 볼 수 있어요. 창은 실제 크기(920×640)예요.</p>
+<div class="fw-top">
+  <b style="font-size:.85rem">메뉴 위치</b>
+  <button data-place="A">A. 설정 바로 아래</button><button data-place="B">B. 메뉴 맨 아래</button>
+  <span style="width:1rem"></span><b style="font-size:.85rem">상태</b>
+  <button data-st="new">새 버전 있음</button><button data-st="dl">받는 중</button><button data-st="latest">최신</button>
+  <button data-st="checking">확인 중</button><button data-st="fail">확인 실패</button>
+  <label><input type="checkbox" id="dark"> 다크</label>
+</div>
+<div class="fw-wrap">
+<div class="qm q-win" id="win">
+  <div class="q-tb"><i></i>QuickMedia<div class="ctl"><span>—</span><span>☐</span><span>✕</span></div></div>
+  <div class="q-body">
+    <nav class="q-side">
+      <div class="q-nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>다운로드</span></div>
+      <div class="q-grp"><div class="q-nav q-parent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>설정</span><svg class="q-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        <div class="q-kids"><div>
+          <div class="q-nav q-kid"><span>로그인</span></div><div class="q-nav q-kid"><span>네트워크</span></div>
+          <div class="q-nav q-kid"><span>파일</span></div><div class="q-nav q-kid"><span>고급</span></div>
+        </div></div></div>
+      <div class="grow" id="grow"></div>
+      <div class="q-nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg><span>업데이트</span><i class="q-dot" id="dot"></i></div>
+      <div class="q-ver" id="ver">버전 1.1.0</div>
+    </nav>
+    <div class="q-main"><section class="q-page"><div class="q-scroll">
+      <div class="q-head"><div class="q-title">업데이트</div></div>
+      <div class="q-desc">지금 버전 1.1.0 · 앱을 켤 때 새 버전을 확인해요.</div>
+      <div class="q-box">
+        <div data-s="new dl">
+          <div class="u-big">새 버전 1.2.0 이 나왔어요</div>
+          <div class="u-notes"><h4>새 기능</h4><ul><li>설정이 왼쪽 메뉴로 들어왔어요. 바꾸면 바로 저장돼요.</li><li>업데이트도 창이 뜨는 대신 메뉴에서 확인해요.</li></ul>
+            <h4>고친 것</h4><ul><li>긴 제목의 파일 이름이 잘리던 문제</li></ul></div>
+          <div class="u-bar" data-s="dl"><b></b></div>
+          <div class="u-actions" data-s="new">
+            <button class="q-btn primary">지금 업데이트</button>
+            <span class="u-status">받고 나면 QuickMedia 가 잠깐 꺼졌다 다시 켜져요.</span>
+          </div>
+          <div class="u-actions" data-s="dl">
+            <button class="q-btn primary" disabled>지금 업데이트</button><span class="u-status">받는 중… 42%</span>
+          </div>
+        </div>
+        <div data-s="latest">
+          <div class="u-big">최신 버전이에요</div><div class="u-sub">방금 확인했어요</div>
+          <div class="u-actions"><button class="q-btn">업데이트 확인</button></div>
+        </div>
+        <div data-s="checking">
+          <div class="u-big">확인하는 중…</div><div class="u-sub">최신 버전을 알아보고 있어요</div>
+          <div class="u-actions"><button class="q-btn" disabled>업데이트 확인</button></div>
+        </div>
+        <div data-s="fail">
+          <div class="u-big">확인하지 못했어요</div><div class="u-sub" style="color:var(--danger)">인터넷 연결을 확인해 주세요</div>
+          <div class="u-actions"><button class="q-btn">다시 확인</button></div>
+        </div>
+      </div>
+    </div></section></div>
+  </div>
+</div>
+<div class="fw-notes">
+  <h3>정한 것</h3>
+  <ul><li>새 버전을 찾으면 '업데이트' 옆에 빨간 점만. 창은 안 떠요.</li>
+      <li>메뉴는 항상 보이고, 여기서 직접 확인할 수 있어요.</li>
+      <li>받는 중인 영상이 있으면 [지금 업데이트] 때 한 번 물어봐요.</li></ul>
+  <h3>여기서 고를 것</h3>
+  <ul><li><b>A</b>: '설정' 묶음 바로 아래. 메뉴가 한곳에 모여요.</li>
+      <li><b>B</b>: 메뉴 맨 아래에 붙이고 그 밑에 지금 버전. 자주 안 누르는 항목을 떼어 둬요.</li></ul>
+  <p class="dim">빨간 점은 새 버전이 있을 때만 보여요('최신'에선 사라져요).</p>
+</div>
+</div>
+<script>
+(() => {
+  const win = document.getElementById('win');
+  const setPlace = p => { document.getElementById('grow').hidden = p !== 'B'; document.getElementById('ver').hidden = p !== 'B'; };
+  const setState = s => {
+    win.querySelectorAll('[data-s]').forEach(el => { el.hidden = !el.dataset.s.split(' ').includes(s); });
+    document.getElementById('dot').hidden = !(s === 'new' || s === 'dl');
+  };
+  document.querySelectorAll('[data-place]').forEach(b => b.onclick = () => setPlace(b.dataset.place));
+  document.querySelectorAll('[data-st]').forEach(b => b.onclick = () => setState(b.dataset.st));
+  document.getElementById('dark').onchange = e => win.classList.toggle('dark', e.target.checked);
+  setPlace('B'); setState('new');
+})();
+</script>
+
+</body>
+</html>
