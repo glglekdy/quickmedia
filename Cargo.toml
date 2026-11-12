@@ -15,6 +15,11 @@ path = "src/main.rs"
 
 [dependencies]
 serde_json = "1"
+sha2 = "0.10"
+# TLS 는 Windows 것(schannel)을 써서 exe 를 작게 둔다
+ureq = { version = "2", default-features = false, features = ["native-tls"] }
+native-tls = "0.2"
+image = { version = "0.25", default-features = false, features = ["ico", "png", "jpeg", "gif", "bmp"] }
 winreg = "0.55"
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
 
