@@ -1,6 +1,7 @@
 # v* 태그를 push 하면 설치 파일(QuickMedia-Setup-<버전>.exe)을 빌드해 GitHub 릴리즈로 올린다.
 # 설치된 앱은 시작할 때 releases/latest 를 보고 새 설치 파일로 스스로 업데이트한다.
 # 옛 유튜브 다운로더는 릴리즈의 첫 .exe 를 받으므로 exe 는 설치 파일 하나만 올린다.
+# ffmpeg 는 설치 파일에 넣지 않고 ffmpeg-win64.zip 으로 함께 올린다. ffmpeg 가 없는 PC 에서 앱이 받아 간다.
 #
 # 릴리즈 설명은 release-notes/<태그>.md 를 쓴다. 없으면 빌드하지 않는다.
 #
@@ -73,6 +74,9 @@ jobs:
       - name: 릴리즈 올리기
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/QuickMedia-Setup-*.exe
+          files: |
+            dist/QuickMedia-Setup-*.exe
+            dist/ffmpeg-win64.zip
+          fail_on_unmatched_files: true
           # 설명은 사람이 쓴 업데이트 내용. 앱의 업데이트 화면에 그대로 보인다.
           body_path: release-notes/${{ github.ref_name }}.md

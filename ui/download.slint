@@ -184,6 +184,40 @@ export component DownloadPage inherits VerticalLayout {
         if Download.panel-open: OptionsPanel { }
     }
 
+    // 변환 도구 안내
+    if Download.tool-text != "": VerticalLayout {
+        padding-left: 28px; padding-right: 28px; padding-bottom: 10px;
+        Rectangle {
+            background: Theme.card-bg;
+            border-width: 1px;
+            border-color: Theme.border;
+            border-radius: 10px;
+            height: tool.min-height;
+            tool := VerticalLayout {
+                padding-left: 14px; padding-right: 14px; padding-top: 10px; padding-bottom: 12px;
+                spacing: 8px;
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text {
+                        horizontal-stretch: 1;
+                        text: Download.tool-text;
+                        color: Download.tool-error ? Theme.danger : Theme.text;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                    }
+                    if Download.tool-retry: VerticalLayout {
+                        alignment: center;
+                        Btn { text: "다시 시도"; clicked => { Download.retry-tool(); } }
+                    }
+                }
+                if Download.tool-show-bar: Bar {
+                    value: Download.tool-progress;
+                }
+            }
+        }
+    }
+
     // 목록 머리
     HorizontalLayout {
         padding-left: 28px; padding-right: 28px; padding-top: 4px; padding-bottom: 6px;

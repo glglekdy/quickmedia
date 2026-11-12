@@ -29,13 +29,15 @@
 cargo run                                          # 실행
 cargo test                                         # 시험
 cargo test --test ytdlp_live -- --ignored          # 실제로 받아 보는 시험 (네트워크 필요)
-./build.ps1                                        # dist/QuickMedia-Setup-<버전>.exe (yt-dlp · ffmpeg 포함)
+./build.ps1                                        # dist/QuickMedia-Setup-<버전>.exe (yt-dlp 포함)
 ```
 
 설치 파일을 만들려면 Inno Setup 6이 필요해요: `winget install JRSoftware.InnoSetup`
 `./build.ps1 -NoInstaller`는 설치 파일 없이 `dist/QuickMedia` 폴더까지만 만들어요.
 
 `cargo run`으로 띄운 개발용 빌드는 설치된 앱과 설정을 따로 써요(레지스트리 `QuickMedia-dev`, `%APPDATA%\QuickMedia-dev`).
+
+ffmpeg는 설치 파일에 넣지 않아요. 앱이 켜질 때 설치 폴더 → 전에 받아 둔 것(`%APPDATA%\QuickMedia\bin`) → PC에 설치된 것(PATH) 순서로 찾고, 없으면 릴리즈의 `ffmpeg-win64.zip`을 받아요. 이 파일은 릴리즈 워크플로가 `./build.ps1 -FFmpeg <경로>`로 만들어 함께 올려요. `QUICKMEDIA_NO_FFMPEG=1 cargo run`으로 ffmpeg가 없는 PC처럼 시험할 수 있어요.
 
 화면은 [Slint](https://slint.dev)로 그려요(`ui/*.slint`). 무엇을 보일지는 Rust(`src/`)가 정하고, 영상은 `yt-dlp.exe`를 자식 프로세스로 돌려 받아요.
 

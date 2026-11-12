@@ -1,8 +1,11 @@
-﻿# QuickMedia 빌드 스크립트 -> dist/QuickMedia-Setup-<버전>.exe (yt-dlp · ffmpeg 포함 설치 파일)
+﻿# QuickMedia 빌드 스크립트 -> dist/QuickMedia-Setup-<버전>.exe (yt-dlp 포함 설치 파일)
 #
-#   ./build.ps1                                  yt-dlp 와 ffmpeg 를 받아서 넣는다
-#   ./build.ps1 -FFmpeg C:\x\ffmpeg.exe -YtDlp C:\x\yt-dlp.exe
+#   ./build.ps1                                  yt-dlp 를 받아서 넣는다
+#   ./build.ps1 -YtDlp C:\x\yt-dlp.exe
+#   ./build.ps1 -FFmpeg C:\x\ffmpeg.exe          릴리즈에 함께 올릴 dist/ffmpeg-win64.zip 도 만든다
 #   ./build.ps1 -NoInstaller                     dist/QuickMedia 폴더까지만 만든다
+#
+# ffmpeg 는 설치 파일에 넣지 않는다. PC 에 없으면 앱이 릴리즈의 ffmpeg-win64.zip 을 받는다.
 #
 # Rust(https://rustup.rs)와 Inno Setup 6 이 필요하다: winget install JRSoftware.InnoSetup
 
@@ -22,14 +25,13 @@ if (-not $NoInstaller) {
     if (-not $iscc) { throw "Inno Setup 6 이 필요해요: winget install JRSoftware.InnoSetup" }
 }
 
-# 넣을 도구. 따로 주지 않으면 scripts/fetch-tools.ps1 이 받아 둔 것을 쓴다.
-if (-not $FFmpeg -or -not $YtDlp) {
+# 넣을 yt-dlp. 따로 주지 않으면 scripts/fetch-tools.ps1 이 받아 둔 것을 쓴다.
+if (-not $YtDlp) {
     & "$PSScriptRoot/scripts/fetch-tools.ps1"
-    if (-not $?) { throw "yt-dlp · ffmpeg 받기 실패" }
-    if (-not $FFmpeg) { $FFmpeg = "build/tools/ffmpeg.exe" }
-    if (-not $YtDlp) { $YtDlp = "build/tools/yt-dlp.exe" }
+    if (-not $?) { throw "yt-dlp 받기 실패" }
+    $YtDlp = "build/tools/yt-dlp.exe"
 }
-foreach ($tool in $FFmpeg, $YtDlp) {
+foreach ($tool in @($YtDlp, $FFmpeg) | Where-Object { $_ }) {
     if (-not (Test-Path $tool)) { throw "파일이 없어요: $tool" }
 }
 
@@ -46,7 +48,19 @@ if (Test-Path $app) { Remove-Item $app -Recurse -Force }
 New-Item -ItemType Directory -Force $app | Out-Null
 Copy-Item "target/release/QuickMedia.exe" $app
 Copy-Item $YtDlp "$app/yt-dlp.exe"
-Copy-Item $FFmpeg "$app/ffmpeg.exe"
+
+# 앱이 받아 갈 ffmpeg. ffmpeg.exe 하나만 넣어 받는 양을 줄인다.
+if ($FFmpeg) {
+    $zip = "dist/ffmpeg-win64.zip"
+    if (Test-Path $zip) { Remove-Item $zip -Force }
+    $stage = "build/ffmpeg-zip"
+    if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+    New-Item -ItemType Directory -Force $stage | Out-Null
+    Copy-Item $FFmpeg "$stage/ffmpeg.exe"
+    Compress-Archive -Path "$stage/ffmpeg.exe" -DestinationPath $zip -CompressionLevel Optimal
+    Remove-Item $stage -Recurse -Force
+    Write-Host ("ffmpeg: $zip  ({0:N0} MB)" -f ((Get-Item $zip).Length / 1MB))
+}
 
 if ($NoInstaller) {
     $mb = (Get-ChildItem $app | Measure-Object Length -Sum).Sum / 1MB

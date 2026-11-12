@@ -34,6 +34,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; 1.x(PyInstaller 빌드)에서 올라올 때 옛 파이썬·Qt 파일을 지운다. 2.0 부터는 이 폴더를 쓰지 않는다.
 Type: filesandordirs; Name: "{app}\_internal"
 
+[UninstallDelete]
+; 앱이 받아 둔 ffmpeg 와 yt-dlp 갱신본. 받은 기록과 설정은 남긴다.
+Type: filesandordirs; Name: "{userappdata}\QuickMedia\bin"
+
 [Files]
 Source: "..\dist\QuickMedia\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 

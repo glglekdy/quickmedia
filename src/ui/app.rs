@@ -11,6 +11,7 @@ use slint::{ComponentHandle, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, VecM
 
 use super::cards::{Card, CardState};
 use super::download::{AddError, Change, Controller};
+use super::ffmpeg::{banner, FfmpegState};
 use super::settings::{ExtraStep, SettingsForm, ERROR_KEYS};
 pub use super::update::Phase;
 use super::update::{app_view, confirm_question, ytdlp_view, Action, AppUpdate, YtdlpUpdate};
@@ -24,7 +25,7 @@ use crate::options::{
 use crate::site::{letter_of, IconPixels, SiteIcons};
 use crate::store::{read_group, write_group, KeyValue, Registry};
 use crate::ytdlp::{check_extra_args, run_job, Event, JobSpec, KillGroup, Tools};
-use crate::{migrate, updater, ytdlp_update};
+use crate::{ffmpeg, migrate, updater, ytdlp_update};
 
 /// 자막 언어 상자의 값. 마지막은 "직접 입력".
 const SUB_LANGS: [&str; 4] = ["ko", "en", "all", ""];
@@ -44,6 +45,9 @@ pub struct App {
     pub ytdlp: RefCell<YtdlpUpdate>,
     /// 지금 쓰는 yt-dlp 의 버전. 아직 모르면 `None`.
     pub ytdlp_version: RefCell<Option<String>>,
+    pub ffmpeg: RefCell<FfmpegState>,
+    /// ffmpeg 를 기다리느라 아직 시작하지 않은 작업.
+    held: RefCell<Vec<(u32, JobSpec)>>,
     /// 호스트 → 아이콘. `None` 은 받는 중이거나 없는 곳.
     icon_cache: RefCell<HashMap<String, Option<slint::Image>>>,
 }
@@ -89,10 +93,8 @@ fn initial_tools() -> Tools {
         }
         dev.as_ref().map(|d| d.join(name)).filter(|p| p.is_file())
     };
-    Tools {
-        ytdlp: pick("yt-dlp.exe").unwrap_or_else(|| install.join("yt-dlp.exe")),
-        ffmpeg_dir: pick("ffmpeg.exe").and_then(|p| p.parent().map(PathBuf::from)),
-    }
+    // ffmpeg 는 `locate_ffmpeg` 가 찾거나 받아서 채운다
+    Tools { ytdlp: pick("yt-dlp.exe").unwrap_or_else(|| install.join("yt-dlp.exe")), ffmpeg_dir: None }
 }
 
 fn index_of(list: &[&str], value: &str) -> i32 {
@@ -596,6 +598,70 @@ impl App {
         });
     }
 
+    /// 작업을 시작한다. ffmpeg 를 찾거나 받는 중이면 끝날 때까지 붙잡아 둔다.
+    fn start_or_hold(&self, id: u32, spec: JobSpec) {
+        if self.ffmpeg.borrow().holds_jobs() {
+            self.held.borrow_mut().push((id, spec));
+        } else {
+            start_job(&self.tools, &self.group, id, spec);
+        }
+    }
+
+    fn set_ffmpeg(&self, state: FfmpegState) {
+        let view = banner(&state);
+        let release = !state.holds_jobs();
+        *self.ffmpeg.borrow_mut() = state;
+        if let Some(window) = self.window() {
+            let dl = window.global::<Download>();
+            dl.set_tool_text(view.text.into());
+            dl.set_tool_error(view.error);
+            dl.set_tool_show_bar(view.progress.is_some());
+            dl.set_tool_progress(view.progress.unwrap_or(0.0));
+            dl.set_tool_retry(view.retry);
+        }
+        if release {
+            let held = std::mem::take(&mut *self.held.borrow_mut());
+            for (id, spec) in held {
+                start_job(&self.tools, &self.group, id, spec);
+            }
+        }
+    }
+
+    fn ffmpeg_ready(&self, dir: PathBuf) {
+        self.tools.lock().unwrap().ffmpeg_dir = Some(dir);
+        self.set_ffmpeg(FfmpegState::Ready);
+    }
+
+    /// ffmpeg 를 뒤에서 받는다. 그동안 걸어 둔 다운로드는 기다린다.
+    fn fetch_ffmpeg(&self) {
+        if matches!(*self.ffmpeg.borrow(), FfmpegState::Fetching(_) | FfmpegState::Ready) {
+            return;
+        }
+        self.set_ffmpeg(FfmpegState::Fetching(None));
+        let group = self.group.clone();
+        let bin = data_dir().join("bin");
+        std::thread::spawn(move || {
+            let source = ffmpeg::fetch_source();
+            let last = std::sync::atomic::AtomicU8::new(255);
+            let progress = |done: u64, total: u64| {
+                if total == 0 {
+                    return;
+                }
+                let percent = (done * 100 / total).min(100) as u8;
+                if last.swap(percent, std::sync::atomic::Ordering::Relaxed) != percent {
+                    let _ = slint::invoke_from_event_loop(move || with_app(|app| app.set_ffmpeg(FfmpegState::Fetching(Some(percent)))));
+                }
+            };
+            let result = ffmpeg::install(&source, &bin, &group, &progress);
+            let _ = slint::invoke_from_event_loop(move || {
+                with_app(|app| match result {
+                    Ok(dir) => app.ffmpeg_ready(dir),
+                    Err(message) => app.set_ffmpeg(FfmpegState::Failed(message)),
+                })
+            });
+        });
+    }
+
     fn options_changed(&self, opts: DownloadOptions) {
         self.controller.borrow_mut().set_options(opts);
         self.save_options();
@@ -699,6 +765,7 @@ fn wire_download(window: &AppWindow) {
         })
     });
     dl.on_open_folder(|| with_app(|app| win::open_folder(app.controller.borrow().folder())));
+    dl.on_retry_tool(|| with_app(|app| app.fetch_ffmpeg()));
 }
 
 fn wire_settings(window: &AppWindow) {
@@ -752,13 +819,12 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
     let group = Arc::new(KillGroup::new().map_err(|e| slint::PlatformError::Other(e.to_string()))?);
     let tools = Arc::new(Mutex::new(initial_tools()));
 
-    let (job_tools, job_group) = (tools.clone(), group.clone());
     let controller = Controller::new(
         opts.clone(),
         settings.clone(),
         folder.clone(),
         data.join("archive.txt"),
-        Box::new(move |id, spec| start_job(&job_tools, &job_group, id, spec)),
+        Box::new(|id, spec| with_app(|app| app.start_or_hold(id, spec))),
         Box::new(|n| win::confirm("재생목록", &format!("영상 {n}개를 모두 받을까요?"))),
     );
 
@@ -784,6 +850,8 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
         ytdlp: RefCell::new(YtdlpUpdate::Idle),
         // 알아보는 동안에는 "…" 로 보인다
         ytdlp_version: RefCell::new(Some("…".to_string())),
+        ffmpeg: RefCell::new(FfmpegState::Looking),
+        held: RefCell::default(),
         icon_cache: RefCell::default(),
     });
     APP.with(|slot| *slot.borrow_mut() = Some(app.clone()));
@@ -825,6 +893,29 @@ fn locate_ytdlp(app: &Rc<App>) {
                 *app.ytdlp_version.borrow_mut() = found.map(|f| f.version);
                 app.show_update();
             });
+        });
+    });
+}
+
+/// 쓸 ffmpeg 를 뒤에서 찾는다: 설치 폴더, 전에 받아 둔 것, PC 에 설치된 것(PATH) 순서. 없으면 받는다.
+pub fn locate_ffmpeg(app: &Rc<App>) {
+    let group = app.group.clone();
+    let mut own = vec![install_dir()];
+    own.extend(dev_tools_dir());
+    own.push(data_dir().join("bin"));
+    let mut path = std::env::var_os("PATH");
+    // 개발용: QUICKMEDIA_NO_FFMPEG=1 이면 ffmpeg 가 없는 PC 처럼 받아 온다
+    if cfg!(debug_assertions) && std::env::var_os("QUICKMEDIA_NO_FFMPEG").is_some() {
+        own = vec![data_dir().join("bin")];
+        path = None;
+    }
+    std::thread::spawn(move || {
+        let found = ffmpeg::locate(&own, path.as_deref(), &group);
+        let _ = slint::invoke_from_event_loop(move || {
+            with_app(|app| match found {
+                Some(dir) => app.ffmpeg_ready(dir),
+                None => app.fetch_ffmpeg(),
+            })
         });
     });
 }

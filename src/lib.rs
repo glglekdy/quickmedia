@@ -1,6 +1,7 @@
 //! QuickMedia: 화면과 무관한 로직.
 
 pub mod app_info;
+pub mod ffmpeg;
 pub mod http;
 pub mod migrate;
 pub mod options;

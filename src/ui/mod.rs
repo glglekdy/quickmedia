@@ -3,6 +3,7 @@
 pub mod app;
 pub mod cards;
 pub mod download;
+pub mod ffmpeg;
 pub mod nav;
 pub mod settings;
 pub mod update;
@@ -17,6 +18,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     let window = app::build()?;
     // 뒤에서 확인. 새 버전이면 메뉴에 빨간 점만
     app::with_app(|app| app.check_update());
+    app::with_app(app::locate_ffmpeg);
 
     #[cfg(debug_assertions)]
     debug::hooks(&window);
