@@ -1,0 +1,32 @@
+// 업데이트 화면의 값과 콜백. 무엇을 보일지는 Rust(src/ui/update.rs)가 정한다.
+
+export struct NoteLineView {
+    text: string,
+    heading: bool,
+}
+
+export global Update {
+    // "지금 버전 2.0.0 · 앱을 켤 때 새 버전을 확인해요."
+    in property <string> description;
+
+    // 앱 업데이트
+    in property <string> title;
+    in property <string> sub;
+    in property <bool> sub-error;
+    in property <string> button;
+    in property <bool> enabled: true;
+    in property <bool> primary;
+    in property <string> status;
+    in property <bool> status-error;
+    in property <bool> show-bar;
+    in property <float> progress;
+    in property <[NoteLineView]> notes;
+    callback app-action();
+
+    // yt-dlp 갱신
+    in property <string> ytdlp-version;
+    in property <string> ytdlp-status;
+    in property <bool> ytdlp-status-error;
+    in property <bool> ytdlp-enabled: true;
+    callback ytdlp-action();
+}

@@ -5,6 +5,7 @@ pub mod cards;
 pub mod download;
 pub mod nav;
 pub mod settings;
+pub mod update;
 mod win;
 
 use slint::ComponentHandle;
@@ -14,6 +15,8 @@ slint::include_modules!();
 /// 창을 띄우고 닫힐 때까지 돈다.
 pub fn run() -> Result<(), slint::PlatformError> {
     let window = app::build()?;
+    // 뒤에서 확인. 새 버전이면 메뉴에 빨간 점만
+    app::with_app(|app| app.check_update());
 
     #[cfg(debug_assertions)]
     debug::hooks(&window);
@@ -78,6 +81,17 @@ mod debug {
                     act(&window, &step);
                 });
             }
+        }
+        // QUICKMEDIA_FAKE_UPDATE=ready|downloading|failed: 새 버전이 나온 것처럼 보이게 한다(확인이 끝난 뒤).
+        if let Ok(kind) = std::env::var("QUICKMEDIA_FAKE_UPDATE") {
+            slint::Timer::single_shot(std::time::Duration::from_millis(3000), move || {
+                let phase = match kind.as_str() {
+                    "downloading" => app::Phase::Downloading(Some(40)),
+                    "failed" => app::Phase::Failed("받은 파일이 손상되었어요. (SHA-256 불일치)".into()),
+                    _ => app::Phase::Ready,
+                };
+                app::with_app(|app| app.debug_fake_release(phase));
+            });
         }
         let Ok(path) = std::env::var("QUICKMEDIA_SNAPSHOT") else { return };
         let delay = std::env::var("QUICKMEDIA_SNAPSHOT_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(1200);

@@ -12,7 +12,9 @@ use slint::{ComponentHandle, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, VecM
 use super::cards::{Card, CardState};
 use super::download::{AddError, Change, Controller};
 use super::settings::{ExtraStep, SettingsForm, ERROR_KEYS};
-use super::{nav, win, AppWindow, CardView, Download, Nav, Settings};
+pub use super::update::Phase;
+use super::update::{app_view, confirm_question, ytdlp_view, Action, AppUpdate, YtdlpUpdate};
+use super::{nav, win, AppWindow, CardView, Download, Nav, NoteLineView, Settings, Update};
 use crate::app_info::{self, VERSION};
 use crate::options::{
     apply_preset, changed_summary, matching_preset, options_from_map, options_to_map, settings_from_map,
@@ -22,7 +24,7 @@ use crate::options::{
 use crate::site::{letter_of, IconPixels, SiteIcons};
 use crate::store::{read_group, write_group, KeyValue, Registry};
 use crate::ytdlp::{check_extra_args, run_job, Event, JobSpec, KillGroup, Tools};
-use crate::{migrate, ytdlp_update};
+use crate::{migrate, updater, ytdlp_update};
 
 /// 자막 언어 상자의 값. 마지막은 "직접 입력".
 const SUB_LANGS: [&str; 4] = ["ko", "en", "all", ""];
@@ -38,6 +40,10 @@ pub struct App {
     pub tools: Arc<Mutex<Tools>>,
     pub group: Arc<KillGroup>,
     pub icons: Arc<SiteIcons>,
+    pub update: RefCell<AppUpdate>,
+    pub ytdlp: RefCell<YtdlpUpdate>,
+    /// 지금 쓰는 yt-dlp 의 버전. 아직 모르면 `None`.
+    pub ytdlp_version: RefCell<Option<String>>,
     /// 호스트 → 아이콘. `None` 은 받는 중이거나 없는 곳.
     icon_cache: RefCell<HashMap<String, Option<slint::Image>>>,
 }
@@ -437,6 +443,171 @@ impl App {
         }
     }
 
+    /// 업데이트 화면과 메뉴의 빨간 점을 지금 상태에 맞춘다.
+    pub fn show_update(&self) {
+        let Some(window) = self.window() else { return };
+        let up = window.global::<Update>();
+        let state = self.update.borrow();
+        let view = app_view(&state, updater::can_self_update());
+        up.set_description(format!("지금 버전 {VERSION} · 앱을 켤 때 새 버전을 확인해요.").into());
+        up.set_title(view.title.into());
+        up.set_sub(view.sub.into());
+        up.set_sub_error(view.sub_error);
+        up.set_button(view.button.into());
+        up.set_enabled(view.enabled);
+        up.set_primary(view.primary);
+        up.set_status(view.status.into());
+        up.set_status_error(view.status_error);
+        up.set_show_bar(view.progress.is_some());
+        up.set_progress(view.progress.unwrap_or(0.0));
+        let notes: Vec<NoteLineView> =
+            view.notes.into_iter().map(|line| NoteLineView { text: line.text.into(), heading: line.heading }).collect();
+        up.set_notes(ModelRc::from(Rc::new(VecModel::from(notes))));
+        window.global::<Nav>().set_update_dot(state.has_dot());
+
+        let version = self.ytdlp_version.borrow();
+        let view = ytdlp_view(version.as_deref(), &self.ytdlp.borrow());
+        up.set_ytdlp_version(view.version.into());
+        up.set_ytdlp_status(view.status.into());
+        up.set_ytdlp_status_error(view.status_error);
+        up.set_ytdlp_enabled(view.enabled);
+    }
+
+    /// 개발용: 새 버전이 나온 것처럼 보이게 한다.
+    #[cfg(debug_assertions)]
+    pub fn debug_fake_release(&self, phase: Phase) {
+        let notes = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/release-notes/v1.2.0.md")).unwrap_or_default();
+        let release = updater::Release { version: "9.9.9".into(), notes, asset_url: String::new(), asset_size: 0, sha256: String::new() };
+        self.set_update(AppUpdate::Available { release, phase });
+    }
+
+    fn set_update(&self, state: AppUpdate) {
+        *self.update.borrow_mut() = state;
+        self.show_update();
+    }
+
+    fn set_ytdlp(&self, state: YtdlpUpdate) {
+        *self.ytdlp.borrow_mut() = state;
+        self.show_update();
+    }
+
+    /// 새 버전이 있는지 뒤에서 확인한다.
+    pub fn check_update(&self) {
+        if *self.update.borrow() == AppUpdate::Checking {
+            return;
+        }
+        self.set_update(AppUpdate::Checking);
+        std::thread::spawn(|| {
+            let result = updater::fetch_latest();
+            let _ = slint::invoke_from_event_loop(move || {
+                with_app(|app| {
+                    app.set_update(match result {
+                        Ok(Some(release)) => AppUpdate::Available { release, phase: Phase::Ready },
+                        Ok(None) => AppUpdate::UpToDate { at: win::clock() },
+                        Err(message) => AppUpdate::CheckFailed(message),
+                    })
+                })
+            });
+        });
+    }
+
+    fn set_phase(&self, phase: Phase) {
+        let release = match &*self.update.borrow() {
+            AppUpdate::Available { release, .. } => release.clone(),
+            _ => return,
+        };
+        self.set_update(AppUpdate::Available { release, phase });
+    }
+
+    /// 설치 파일을 받아 적용한다. 끝나면 앱이 꺼지고 설치 파일이 다시 띄운다.
+    fn download_update(&self) {
+        let release = match &*self.update.borrow() {
+            AppUpdate::Available { release, .. } => release.clone(),
+            _ => return,
+        };
+        if !updater::can_self_update() {
+            return;
+        }
+        // 업데이트하면 앱이 꺼지므로 받고 있거나 기다리는 영상이 있으면 묻는다
+        if let Some(question) = confirm_question(self.controller.borrow().active_count()) {
+            if !win::confirm("업데이트", &question) {
+                return;
+            }
+        }
+        self.set_phase(Phase::Downloading(None));
+        std::thread::spawn(move || {
+            let last = std::sync::atomic::AtomicU8::new(255);
+            let progress = |done: u64, total: u64| {
+                if total == 0 {
+                    return;
+                }
+                let percent = (done * 100 / total).min(100) as u8;
+                // 퍼센트가 바뀔 때만 알린다
+                if last.swap(percent, std::sync::atomic::Ordering::Relaxed) != percent {
+                    let _ = slint::invoke_from_event_loop(move || with_app(|app| app.set_phase(Phase::Downloading(Some(percent)))));
+                }
+            };
+            let result = updater::download(&release, &progress);
+            let _ = slint::invoke_from_event_loop(move || {
+                with_app(|app| match result.and_then(|setup| updater::launch_apply(&setup)) {
+                    Ok(()) => {
+                        app.set_phase(Phase::Restarting);
+                        app.leave_settings(true);
+                        app.controller.borrow_mut().shutdown();
+                        let _ = slint::quit_event_loop();
+                    }
+                    Err(message) => app.set_phase(Phase::Failed(message)),
+                })
+            });
+        });
+    }
+
+    /// yt-dlp 의 새 버전을 확인하고, 있으면 받아서 이후 작업부터 쓴다.
+    fn update_ytdlp(&self) {
+        if !ytdlp_view(None, &self.ytdlp.borrow()).enabled {
+            return;
+        }
+        self.set_ytdlp(YtdlpUpdate::Checking);
+        // 지금 버전을 모르면 가장 새 것을 받는다
+        let current = self.ytdlp_version.borrow().clone().filter(|v| v.starts_with(|c: char| c.is_ascii_digit())).unwrap_or_else(|| "0".to_string());
+        let group = self.group.clone();
+        let bin = data_dir().join("bin");
+        std::thread::spawn(move || {
+            let report = |state: YtdlpUpdate| {
+                let _ = slint::invoke_from_event_loop(move || with_app(|app| app.set_ytdlp(state)));
+            };
+            let release = match ytdlp_update::fetch_latest(&current) {
+                Ok(Some(release)) => release,
+                Ok(None) => return report(YtdlpUpdate::UpToDate),
+                Err(message) => return report(YtdlpUpdate::Failed(message)),
+            };
+            report(YtdlpUpdate::Downloading(0));
+            let last = std::sync::atomic::AtomicU8::new(0);
+            let progress = |done: u64, total: u64| {
+                if total == 0 {
+                    return;
+                }
+                let percent = (done * 100 / total).min(100) as u8;
+                if last.swap(percent, std::sync::atomic::Ordering::Relaxed) != percent {
+                    report(YtdlpUpdate::Downloading(percent));
+                }
+            };
+            match ytdlp_update::install(&release, &bin, &group, &progress) {
+                Ok(found) => {
+                    let _ = slint::invoke_from_event_loop(move || {
+                        with_app(|app| {
+                            // 이미 돌고 있는 작업은 옛 파일로 끝까지 가고, 이후 작업부터 새 파일을 쓴다
+                            app.tools.lock().unwrap().ytdlp = found.path.clone();
+                            *app.ytdlp_version.borrow_mut() = Some(found.version.clone());
+                            app.set_ytdlp(YtdlpUpdate::Updated(found.version.clone()));
+                        })
+                    });
+                }
+                Err(message) => report(YtdlpUpdate::Failed(message)),
+            }
+        });
+    }
+
     fn options_changed(&self, opts: DownloadOptions) {
         self.controller.borrow_mut().set_options(opts);
         self.save_options();
@@ -556,6 +727,21 @@ fn wire_settings(window: &AppWindow) {
     });
 }
 
+fn wire_update(window: &AppWindow) {
+    let up = window.global::<Update>();
+    up.on_app_action(|| {
+        with_app(|app| {
+            let action = app.update.borrow().action();
+            match action {
+                Action::Check => app.check_update(),
+                Action::Download => app.download_update(),
+                Action::Nothing => {}
+            }
+        })
+    });
+    up.on_ytdlp_action(|| with_app(|app| app.update_ytdlp()));
+}
+
 /// 창을 만들고 저장된 값으로 채운다.
 pub fn build() -> Result<AppWindow, slint::PlatformError> {
     let window = AppWindow::new()?;
@@ -606,6 +792,10 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
         tools,
         group,
         icons,
+        update: RefCell::new(AppUpdate::Idle),
+        ytdlp: RefCell::new(YtdlpUpdate::Idle),
+        // 알아보는 동안에는 "…" 로 보인다
+        ytdlp_version: RefCell::new(Some("…".to_string())),
         icon_cache: RefCell::default(),
     });
     APP.with(|slot| *slot.borrow_mut() = Some(app.clone()));
@@ -614,6 +804,8 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
     wire_nav(&window);
     wire_download(&window);
     wire_settings(&window);
+    wire_update(&window);
+    app.show_update();
 
     // 닫을 때: 기다리던 작업은 버린다. 돌던 yt-dlp·ffmpeg 는 앱이 끝나며 작업 개체와 함께 끝난다.
     window.window().on_close_requested(|| {
@@ -632,13 +824,20 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
 fn locate_ytdlp(app: &Rc<App>) {
     let mut store = app.store.borrow().clone();
     let group = app.group.clone();
-    let (install, bin) = (install_dir(), data_dir().join("bin"));
+    // 개발 중에는 설치 폴더에 yt-dlp 가 없으니 받아 둔 것을 설치본으로 본다
+    let install = Some(install_dir()).filter(|d| d.join("yt-dlp.exe").is_file()).or_else(dev_tools_dir).unwrap_or_else(install_dir);
+    let bin = data_dir().join("bin");
     std::thread::spawn(move || {
-        if let Some(found) = ytdlp_update::locate(&install, &bin, &mut store, &group) {
-            let _ = slint::invoke_from_event_loop(move || {
-                with_app(|app| app.tools.lock().unwrap().ytdlp = found.path.clone());
+        let found = ytdlp_update::locate(&install, &bin, &mut store, &group);
+        let _ = slint::invoke_from_event_loop(move || {
+            with_app(|app| {
+                if let Some(found) = &found {
+                    app.tools.lock().unwrap().ytdlp = found.path.clone();
+                }
+                *app.ytdlp_version.borrow_mut() = found.map(|f| f.version);
+                app.show_update();
             });
-        }
+        });
     });
 }
 

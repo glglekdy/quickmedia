@@ -5,8 +5,10 @@ import { Download, CardView } from "download_state.slint";
 import { DownloadPage } from "download.slint";
 import { Settings } from "settings_state.slint";
 import { SettingsPage } from "settings.slint";
+import { Update, NoteLineView } from "update_state.slint";
+import { UpdatePage } from "update.slint";
 
-export { Theme, Nav, Download, CardView, Settings }
+export { Theme, Nav, Download, CardView, Settings, Update, NoteLineView }
 
 export component AppWindow inherits Window {
     title: "QuickMedia";
@@ -32,10 +34,7 @@ export component AppWindow inherits Window {
             if Nav.page == "login" || Nav.page == "network" || Nav.page == "file" || Nav.page == "advanced": SettingsPage {
                 page: Nav.page;
             }
-            if Nav.page == "update": Text {
-                text: Nav.page;
-                color: Theme.muted;
-            }
+            if Nav.page == "update": UpdatePage { }
         }
     }
 }

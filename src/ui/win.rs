@@ -6,6 +6,7 @@ use std::process::Command;
 
 use windows_sys::Win32::System::DataExchange::{CloseClipboard, GetClipboardData, OpenClipboard};
 use windows_sys::Win32::System::Memory::{GlobalLock, GlobalUnlock};
+use windows_sys::Win32::System::SystemInformation::GetLocalTime;
 
 const CF_UNICODETEXT: u32 = 13;
 
@@ -65,4 +66,15 @@ pub fn pick_folder(title: &str, start: &str) -> Option<PathBuf> {
 
 pub fn pick_file(title: &str, filter_name: &str, extensions: &[&str]) -> Option<PathBuf> {
     rfd::FileDialog::new().set_title(title).add_filter(filter_name, extensions).add_filter("모든 파일", &["*"]).pick_file()
+}
+
+/// 지금 시각 `21:05`.
+pub fn clock() -> String {
+    // SAFETY: GetLocalTime 은 넘긴 구조체를 채우기만 한다.
+    let now = unsafe {
+        let mut time = std::mem::zeroed();
+        GetLocalTime(&mut time);
+        time
+    };
+    format!("{:02}:{:02}", now.wHour, now.wMinute)
 }

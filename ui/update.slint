@@ -1,0 +1,149 @@
+// 업데이트 화면: 앱 업데이트 카드와 yt-dlp 갱신 카드.
+import { Theme } from "theme.slint";
+import { Btn, Bar, ScrollArea } from "widgets.slint";
+import { Update } from "update_state.slint";
+
+component CardBox inherits Rectangle {
+    background: Theme.card-bg;
+    border-width: 1px;
+    border-color: Theme.border;
+    border-radius: 10px;
+    VerticalLayout {
+        padding-left: 20px; padding-right: 20px; padding-top: 18px; padding-bottom: 18px;
+        spacing: 14px;
+        @children
+    }
+}
+
+export component UpdatePage inherits Rectangle {
+    ScrollArea {
+        content-height: body.min-height;
+        body := VerticalLayout {
+            padding-left: 28px; padding-right: 28px; padding-top: 24px; padding-bottom: 24px;
+            alignment: start;
+
+            Text {
+                text: "업데이트";
+                color: Theme.heading;
+                font-size: 22px;
+                font-weight: 600;
+            }
+            Rectangle { height: 4px; }
+            Text {
+                text: Update.description;
+                color: Theme.muted;
+                font-size: 12px;
+            }
+            Rectangle { height: 16px; }
+
+            // ---------- 앱 ----------
+            CardBox {
+                VerticalLayout {
+                    spacing: 2px;
+                    Text {
+                        text: Update.title;
+                        color: Theme.heading;
+                        font-size: 15px;
+                        font-weight: 600;
+                    }
+                    if Update.sub != "": Text {
+                        text: Update.sub;
+                        color: Update.sub-error ? Theme.danger : Theme.muted;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+                }
+                // 릴리즈 설명. 내용만큼만 높이를 잡고, 길면 그 안에서 스크롤한다.
+                if Update.notes.length > 0: VerticalLayout {
+                    Rectangle { height: 1px; background: Theme.border; }
+                    Rectangle { height: 8px; }
+                    Rectangle {
+                        height: min(220px, notes.min-height);
+                        ScrollArea {
+                            height: parent.height;
+                            content-height: notes.min-height;
+                            notes := VerticalLayout {
+                                alignment: start;
+                                spacing: 3px;
+                                for line in Update.notes: Text {
+                                    text: line.text;
+                                    color: Theme.text;
+                                    font-weight: line.heading ? 600 : 400;
+                                    wrap: word-wrap;
+                                }
+                            }
+                        }
+                    }
+                }
+                if Update.show-bar: Bar {
+                    value: Update.progress;
+                }
+                HorizontalLayout {
+                    spacing: 10px;
+                    VerticalLayout {
+                        alignment: center;
+                        Btn {
+                            kind: Update.primary ? "primary" : "normal";
+                            text: Update.button;
+                            enabled: Update.enabled;
+                            clicked => { Update.app-action(); }
+                        }
+                    }
+                    Text {
+                        horizontal-stretch: 1;
+                        text: Update.status;
+                        color: Update.status-error ? Theme.danger : Theme.muted;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+            Rectangle { height: 12px; }
+
+            // ---------- yt-dlp ----------
+            CardBox {
+                VerticalLayout {
+                    spacing: 2px;
+                    Text {
+                        text: "yt-dlp " + Update.ytdlp-version;
+                        color: Theme.heading;
+                        font-size: 15px;
+                        font-weight: 600;
+                    }
+                    Text {
+                        text: "영상을 받아 오는 도구예요. 사이트가 바뀌어 받아지지 않으면 갱신해 보세요.";
+                        color: Theme.muted;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 10px;
+                    VerticalLayout {
+                        alignment: center;
+                        Btn {
+                            text: "갱신";
+                            enabled: Update.ytdlp-enabled;
+                            clicked => { Update.ytdlp-action(); }
+                        }
+                    }
+                    Text {
+                        horizontal-stretch: 1;
+                        text: Update.ytdlp-status;
+                        color: Update.ytdlp-status-error ? Theme.danger : Theme.muted;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+            Rectangle { height: 16px; }
+            Text {
+                text: "Made with Slint";
+                color: Theme.muted;
+                font-size: 11px;
+            }
+        }
+    }
+}
