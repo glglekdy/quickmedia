@@ -95,6 +95,16 @@ mod debug {
                 app::with_app(|app| app.debug_fake_release(phase));
             });
         }
+        // QUICKMEDIA_FAKE_FFMPEG=43|failed: ffmpeg 를 받는 중(퍼센트)이거나 받지 못한 것처럼 보이게 한다.
+        if let Ok(kind) = std::env::var("QUICKMEDIA_FAKE_FFMPEG") {
+            slint::Timer::single_shot(std::time::Duration::from_millis(800), move || {
+                let state = match kind.parse::<u8>() {
+                    Ok(percent) => app::FfmpegState::Fetching(Some(percent)),
+                    Err(_) => app::FfmpegState::Failed("변환 도구를 받다가 끊겼어요. 다시 시도해 주세요.".into()),
+                };
+                app::with_app(|app| app.debug_fake_ffmpeg(state));
+            });
+        }
         let Ok(path) = std::env::var("QUICKMEDIA_SNAPSHOT") else { return };
         let delay = std::env::var("QUICKMEDIA_SNAPSHOT_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(1200);
         let weak = window.as_weak();

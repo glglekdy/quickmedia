@@ -11,8 +11,9 @@ use slint::{ComponentHandle, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, VecM
 
 use super::cards::{Card, CardState};
 use super::download::{AddError, Change, Controller};
-use super::ffmpeg::{banner, FfmpegState};
+use super::ffmpeg::banner;
 use super::settings::{ExtraStep, SettingsForm, ERROR_KEYS};
+pub use super::ffmpeg::FfmpegState;
 pub use super::update::Phase;
 use super::update::{app_view, confirm_question, ytdlp_view, Action, AppUpdate, YtdlpUpdate};
 use super::{nav, win, AppWindow, CardView, Download, Nav, NoteLineView, Settings, Update};
@@ -614,6 +615,8 @@ impl App {
         if let Some(window) = self.window() {
             let dl = window.global::<Download>();
             dl.set_tool_text(view.text.into());
+            dl.set_tool_detail(view.detail.into());
+            dl.set_tool_percent(view.percent.into());
             dl.set_tool_error(view.error);
             dl.set_tool_show_bar(view.progress.is_some());
             dl.set_tool_progress(view.progress.unwrap_or(0.0));
@@ -625,6 +628,12 @@ impl App {
                 start_job(&self.tools, &self.group, id, spec);
             }
         }
+    }
+
+    /// 개발용: ffmpeg 를 받는 중이거나 받지 못한 것처럼 보이게 한다.
+    #[cfg(debug_assertions)]
+    pub fn debug_fake_ffmpeg(&self, state: FfmpegState) {
+        self.set_ffmpeg(state);
     }
 
     fn ffmpeg_ready(&self, dir: PathBuf) {

@@ -1,0 +1,49 @@
+// 화면 오른쪽 아래에 떠 있는 알림. ffmpeg 를 받는 동안 진행 상황을 채워지는 그라데이션으로 보인다.
+import { Theme } from "theme.slint";
+import { Btn, ProgressFill } from "widgets.slint";
+import { Download } from "download_state.slint";
+
+export component ToolToast inherits Rectangle {
+    width: 320px;
+    height: body.min-height;
+    border-radius: 12px;
+    background: Theme.popup-bg;
+    border-width: 1px;
+    border-color: Download.tool-error ? Theme.danger.transparentize(0.5) : Theme.accent.transparentize(0.55);
+    clip: true;
+
+    if Download.tool-show-bar: ProgressFill {
+        value: Download.tool-progress;
+    }
+
+    body := VerticalLayout {
+        padding-left: 16px; padding-right: 14px; padding-top: 12px; padding-bottom: 14px;
+        spacing: 6px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                horizontal-stretch: 1;
+                text: Download.tool-text;
+                color: Download.tool-error ? Theme.danger : Theme.heading;
+                font-weight: 600;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            if Download.tool-percent != "": Text {
+                text: Download.tool-percent;
+                color: Theme.heading;
+                font-size: 15px;
+                font-weight: 700;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+            if Download.tool-retry: Btn { text: "다시 시도"; clicked => { Download.retry-tool(); } }
+        }
+        if Download.tool-detail != "": Text {
+            text: Download.tool-detail;
+            color: Theme.muted;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+    }
+}

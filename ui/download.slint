@@ -1,6 +1,6 @@
 // 다운로드 화면: 링크 입력 · 형식 고르기 · 세부 옵션 · 다운로드 목록 · 저장 위치 독.
 import { Theme } from "theme.slint";
-import { Btn, LineInput, Bar, ScrollArea } from "widgets.slint";
+import { Btn, LineInput, ProgressFill, ScrollArea } from "widgets.slint";
 import { Download, CardView } from "download_state.slint";
 import { OptionsPanel } from "options_panel.slint";
 
@@ -35,6 +35,13 @@ component Card inherits Rectangle {
     border-color: Theme.border;
     border-radius: 10px;
     height: layout.min-height;
+    clip: true;
+
+    // 받는 동안은 받은 만큼 바탕이 채워지고, 끝나면 아래 띠만 남는다
+    if card.show-bar: ProgressFill {
+        value: card.progress;
+        active: card.tone == "";
+    }
 
     layout := VerticalLayout {
         padding-left: 14px; padding-right: 14px; padding-top: 10px; padding-bottom: 12px;
@@ -94,9 +101,6 @@ component Card inherits Rectangle {
                 text: "열기";
                 clicked => { root.open(); }
             }
-        }
-        if card.show-bar: Bar {
-            value: card.progress;
         }
         Text {
             text: card.status;
@@ -182,40 +186,6 @@ export component DownloadPage inherits VerticalLayout {
             wrap: word-wrap;
         }
         if Download.panel-open: OptionsPanel { }
-    }
-
-    // 변환 도구 안내
-    if Download.tool-text != "": VerticalLayout {
-        padding-left: 28px; padding-right: 28px; padding-bottom: 10px;
-        Rectangle {
-            background: Theme.card-bg;
-            border-width: 1px;
-            border-color: Theme.border;
-            border-radius: 10px;
-            height: tool.min-height;
-            tool := VerticalLayout {
-                padding-left: 14px; padding-right: 14px; padding-top: 10px; padding-bottom: 12px;
-                spacing: 8px;
-                HorizontalLayout {
-                    spacing: 8px;
-                    Text {
-                        horizontal-stretch: 1;
-                        text: Download.tool-text;
-                        color: Download.tool-error ? Theme.danger : Theme.text;
-                        font-size: 12px;
-                        vertical-alignment: center;
-                        wrap: word-wrap;
-                    }
-                    if Download.tool-retry: VerticalLayout {
-                        alignment: center;
-                        Btn { text: "다시 시도"; clicked => { Download.retry-tool(); } }
-                    }
-                }
-                if Download.tool-show-bar: Bar {
-                    value: Download.tool-progress;
-                }
-            }
-        }
     }
 
     // 목록 머리
