@@ -1,4 +1,4 @@
-﻿; QuickMedia 설치 파일. build.ps1 이 dist/QuickMedia (PyInstaller onedir) 를 만든 뒤 컴파일한다.
+﻿; QuickMedia 설치 파일. build.ps1 이 dist/QuickMedia (QuickMedia.exe, yt-dlp.exe, ffmpeg.exe) 를 만든 뒤 컴파일한다.
 ;   ISCC /DAppVersion=1.2.3 installer\QuickMedia.iss  ->  dist\QuickMedia-Setup-1.2.3.exe
 
 #ifndef AppVersion
@@ -31,7 +31,7 @@ Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [InstallDelete]
-; 업데이트할 때 옛 빌드의 DLL·Qt 플러그인이 새 것과 섞이지 않게 먼저 비운다.
+; 1.x(PyInstaller 빌드)에서 올라올 때 옛 파이썬·Qt 파일을 지운다. 2.0 부터는 이 폴더를 쓰지 않는다.
 Type: filesandordirs; Name: "{app}\_internal"
 
 [Files]
@@ -48,7 +48,7 @@ Filename: "{app}\QuickMedia.exe"; Flags: nowait skipifnotsilent
 
 [Code]
 // 옛 '유튜브 다운로더'는 업데이트할 때 자기 파일(YoutubeDownloader.exe)을 이 설치 파일로 덮어쓰고 실행한다.
-// 그 사본을 앱이 처음 켜질 때 지우도록 경로를 남긴다 (ytdl/migrate.py).
+// 그 사본을 앱이 처음 켜질 때 지우도록 경로를 남긴다 (src/migrate.rs).
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if (CurStep = ssPostInstall) and
