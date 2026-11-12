@@ -1,0 +1,254 @@
+// 다운로드 화면: 링크 입력 · 형식 고르기 · 세부 옵션 · 다운로드 목록 · 저장 위치 독.
+import { Theme } from "theme.slint";
+import { Btn, LineInput, Bar, ScrollArea } from "widgets.slint";
+import { Download, CardView } from "download_state.slint";
+import { OptionsPanel } from "options_panel.slint";
+
+component SegButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> checked;
+    callback clicked();
+    height: 26px;
+    min-width: label.min-width + 28px;
+    horizontal-stretch: 0;
+    border-radius: 4px;
+    background: checked ? Theme.btn-hover : transparent;
+    label := Text {
+        text: root.text;
+        color: root.checked || touch.has-hover ? Theme.text : Theme.muted;
+        font-weight: root.checked ? 600 : 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// 다운로드 한 건. 사이트 · 제목 · 상태 · 진행률.
+component Card inherits Rectangle {
+    in property <CardView> card;
+    callback open();
+
+    background: Theme.card-bg;
+    border-width: 1px;
+    border-color: Theme.border;
+    border-radius: 10px;
+    height: layout.min-height;
+
+    layout := VerticalLayout {
+        padding-left: 14px; padding-right: 14px; padding-top: 10px; padding-bottom: 12px;
+        spacing: 6px;
+
+        HorizontalLayout {
+            spacing: 6px;
+            height: 16px;
+            if card.has-icon: Image {
+                width: 16px; height: 16px;
+                source: card.icon;
+            }
+            if !card.has-icon: Rectangle {
+                width: 16px; height: 16px;
+                border-radius: 8px;
+                background: Theme.accent;
+                Text {
+                    text: card.letter;
+                    color: white;
+                    font-size: 9px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+            Text {
+                text: card.site;
+                color: Theme.muted;
+                font-size: 11px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            height: 26px;
+            Text {
+                horizontal-stretch: 1;
+                text: card.title;
+                color: Theme.text;
+                font-weight: 500;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            // 숫자 자릿수가 바뀌어도 옆 글자가 흔들리지 않게 폭 고정
+            if card.percent-text != "": Text {
+                width: 40px;
+                text: card.percent-text;
+                color: Theme.percent;
+                font-size: 12px;
+                font-weight: 600;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+            if card.can-open: Btn {
+                kind: "ghost";
+                text: "열기";
+                clicked => { root.open(); }
+            }
+        }
+        if card.show-bar: Bar {
+            value: card.progress;
+        }
+        Text {
+            text: card.status;
+            color: card.tone == "error" ? Theme.danger : card.tone == "done" ? Theme.success : Theme.muted;
+            font-size: 12px;
+            overflow: elide;
+        }
+    }
+}
+
+export component DownloadPage inherits VerticalLayout {
+    public function focus-url() { url.focus-input(); }
+
+    // 제목
+    VerticalLayout {
+        padding-left: 28px; padding-right: 28px; padding-top: 24px; padding-bottom: 8px;
+        spacing: 4px;
+        Text {
+            text: "QuickMedia";
+            color: Theme.heading;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        Text {
+            text: "링크를 붙여넣고 형식을 고른 뒤 다운로드를 누르세요.";
+            color: Theme.muted;
+            font-size: 12px;
+        }
+    }
+
+    // 입력
+    VerticalLayout {
+        padding-left: 28px; padding-right: 28px; padding-top: 12px; padding-bottom: 16px;
+        spacing: 10px;
+
+        HorizontalLayout {
+            spacing: 6px;
+            url := LineInput {
+                text <=> Download.url;
+                placeholder: Download.url-placeholder;
+                accepted => { Download.add(); }
+            }
+            VerticalLayout {
+                alignment: center;
+                Btn { text: "붙여넣기"; clicked => { Download.paste(); } }
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            Rectangle {
+                horizontal-stretch: 0;
+                height: 32px;
+                border-radius: 6px;
+                background: Theme.input-bg;
+                HorizontalLayout {
+                    padding: 3px;
+                    spacing: 2px;
+                    SegButton { text: "최고 화질"; checked: Download.preset == "best"; clicked => { Download.preset-clicked("best"); } }
+                    SegButton { text: "720p"; checked: Download.preset == "720p"; clicked => { Download.preset-clicked("720p"); } }
+                    SegButton { text: "MP3 음원"; checked: Download.preset == "mp3"; clicked => { Download.preset-clicked("mp3"); } }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                Btn {
+                    kind: "ghost";
+                    text: Download.more-text;
+                    has-icon: true;
+                    icon: Download.panel-open ? @image-url("../assets/arrow-up.svg") : @image-url("../assets/arrow-down.svg");
+                    clicked => { Download.toggle-panel(); }
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            VerticalLayout {
+                alignment: center;
+                Btn { kind: "primary"; text: "다운로드"; clicked => { Download.add(); } }
+            }
+        }
+        if Download.error != "": Text {
+            text: Download.error;
+            color: Theme.danger;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+        if Download.panel-open: OptionsPanel { }
+    }
+
+    // 목록 머리
+    HorizontalLayout {
+        padding-left: 28px; padding-right: 28px; padding-top: 4px; padding-bottom: 6px;
+        Text {
+            text: "다운로드 목록";
+            color: Theme.muted;
+            font-size: 12px;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        Btn { kind: "ghost"; text: "끝난 항목 지우기"; clicked => { Download.clear-finished(); } }
+    }
+
+    // 목록
+    ScrollArea {
+        content-height: list.min-height;
+        if Download.cards.length == 0: Text {
+            y: 32px; height: 24px; width: parent.width;
+            text: "아직 받은 영상이 없어요";
+            color: Theme.muted;
+            font-size: 14px;
+            horizontal-alignment: center;
+        }
+        list := VerticalLayout {
+            padding-left: 28px; padding-right: 28px; padding-bottom: 16px;
+            spacing: 8px;
+            alignment: start;
+            for card in Download.cards: Card {
+                card: card;
+                open => { Download.reveal(card.id); }
+            }
+        }
+    }
+
+    // 저장 위치
+    Rectangle {
+        height: 58px;
+        background: Theme.surface;
+        Rectangle {
+            y: 0; height: 1px;
+            background: Theme.border;
+        }
+        HorizontalLayout {
+            padding-left: 28px; padding-right: 28px; padding-top: 12px; padding-bottom: 12px;
+            spacing: 6px;
+            Text {
+                text: "저장 위치";
+                color: Theme.muted;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+            Rectangle { width: 2px; }
+            LineInput {
+                text: Download.folder;
+                read-only: true;
+            }
+            VerticalLayout {
+                alignment: center;
+                Btn { text: "변경"; clicked => { Download.pick-folder(); } }
+            }
+            VerticalLayout {
+                alignment: center;
+                Btn { text: "폴더 열기"; clicked => { Download.open-folder(); } }
+            }
+        }
+    }
+}

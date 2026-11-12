@@ -1,8 +1,10 @@
 // 메인 창: 왼쪽 메뉴 | 화면(다운로드 · 설정 4개 · 업데이트).
 import { Theme } from "theme.slint";
 import { Sidebar, Nav } from "sidebar.slint";
+import { Download, CardView } from "download_state.slint";
+import { DownloadPage } from "download.slint";
 
-export { Theme, Nav }
+export { Theme, Nav, Download, CardView }
 
 export component AppWindow inherits Window {
     title: "QuickMedia";
@@ -15,11 +17,17 @@ export component AppWindow inherits Window {
     default-font-family: Theme.font;
     default-font-size: Theme.font-size;
 
+    // 링크 칸에 커서를 둔다
+    public function focus-url() { download.focus-url(); }
+
     HorizontalLayout {
         Sidebar { }
         Rectangle {
             horizontal-stretch: 1;
-            Text {
+            download := DownloadPage {
+                visible: Nav.page == "download";
+            }
+            if Nav.page != "download": Text {
                 text: Nav.page;
                 color: Theme.muted;
             }

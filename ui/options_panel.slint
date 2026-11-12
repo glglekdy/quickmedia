@@ -1,0 +1,203 @@
+// 펼치는 "세부 옵션" 패널: 형식 / 자막 / 후처리 / 재생목록.
+// 값은 Download 전역에 있고, 바뀌면 Download.options-edited() 로 알린다.
+import { Theme } from "theme.slint";
+import { Check, Radio, Combo, LineInput, FormRow } from "widgets.slint";
+import { Download } from "download_state.slint";
+
+component Tab inherits Rectangle {
+    in property <string> text;
+    in property <bool> selected;
+    callback clicked();
+    height: 30px;
+    min-width: label.min-width + 24px;
+    horizontal-stretch: 0;
+    label := Text {
+        text: root.text;
+        color: root.selected || touch.has-hover ? Theme.text : Theme.muted;
+        font-weight: 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Rectangle {
+        y: parent.height - 2px; height: 2px;
+        background: root.selected ? Theme.accent : transparent;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component OptionsPanel inherits VerticalLayout {
+    property <int> tab: 0;
+    property <bool> audio: Download.kind-audio;
+    property <bool> custom-lang: Download.sub-lang == 3;
+
+    HorizontalLayout {
+        alignment: start;
+        Tab { text: "형식"; selected: tab == 0; clicked => { tab = 0; } }
+        Tab { text: "자막"; selected: tab == 1; clicked => { tab = 1; } }
+        Tab { text: "후처리"; selected: tab == 2; clicked => { tab = 2; } }
+        Tab { text: "재생목록"; selected: tab == 3; clicked => { tab = 3; } }
+    }
+    Rectangle {
+        background: Theme.card-bg;
+        border-width: 1px;
+        border-color: Theme.border;
+        border-radius: 8px;
+
+        VerticalLayout {
+            padding: 12px;
+            spacing: 8px;
+            alignment: start;
+
+            // ---------- 형식 ----------
+            if tab == 0: HorizontalLayout {
+                spacing: 16px;
+                alignment: start;
+                Radio { text: "영상"; checked: !audio; clicked => { Download.kind-audio = false; Download.options-edited(); } }
+                Radio { text: "음원만"; checked: audio; clicked => { Download.kind-audio = true; Download.options-edited(); } }
+            }
+            if tab == 0 && !audio: FormRow {
+                label: "화질"; alignment: start;
+                Combo {
+                    model: ["최고", "2160p", "1440p", "1080p", "720p", "480p", "360p"];
+                    current-index <=> Download.quality;
+                    selected => { Download.options-edited(); }
+                }
+            }
+            if tab == 0 && !audio: FormRow {
+                label: "파일 형식"; alignment: start;
+                Combo {
+                    model: ["MP4", "MKV", "WEBM"];
+                    current-index <=> Download.container;
+                    selected => { Download.options-edited(); }
+                }
+            }
+            if tab == 0 && !audio: FormRow {
+                label: "코덱"; alignment: start;
+                Combo {
+                    width: 190px;
+                    model: ["자동", "H.264 (호환성 좋음)", "VP9", "AV1"];
+                    current-index <=> Download.codec;
+                    selected => { Download.options-edited(); }
+                }
+            }
+            if tab == 0 && audio: FormRow {
+                label: "형식"; alignment: start;
+                Combo {
+                    model: ["MP3", "M4A", "OPUS", "FLAC", "WAV"];
+                    current-index <=> Download.audio-format;
+                    selected => { Download.options-edited(); }
+                }
+            }
+            if tab == 0 && audio: FormRow {
+                label: "음질"; alignment: start;
+                Combo {
+                    model: ["최고", "320k", "192k", "128k"];
+                    // 무손실 형식은 음질을 고를 수 없다
+                    enabled: Download.audio-format < 3;
+                    current-index <=> Download.audio-quality;
+                    selected => { Download.options-edited(); }
+                }
+            }
+
+            // ---------- 자막 ----------
+            if tab == 1: HorizontalLayout {
+                alignment: start;
+                Check { text: "자막 받기"; checked <=> Download.subs; toggled => { Download.options-edited(); } }
+            }
+            if tab == 1: FormRow {
+                label: "언어";
+                Combo {
+                    model: ["한국어", "영어", "모든 언어", "직접 입력"];
+                    enabled: Download.subs;
+                    current-index <=> Download.sub-lang;
+                    selected => { Download.options-edited(); }
+                }
+                if custom-lang: LineInput {
+                    height: 30px;
+                    max-width: 220px;
+                    placeholder: "ko,en";
+                    enabled: Download.subs;
+                    text <=> Download.sub-lang-custom;
+                    edited => { Download.options-edited(); }
+                }
+                Rectangle { }
+            }
+            if tab == 1: FormRow {
+                label: ""; alignment: start;
+                Check { text: "자동 생성 자막 포함"; enabled: Download.subs; checked <=> Download.auto-subs; toggled => { Download.options-edited(); } }
+            }
+            if tab == 1: FormRow {
+                label: "저장 방식"; alignment: start; spacing: 16px;
+                Radio { text: "영상 파일 안에 넣기"; enabled: Download.subs; checked: !Download.sub-file; clicked => { Download.sub-file = false; Download.options-edited(); } }
+                Radio { text: "별도 파일"; enabled: Download.subs; checked: Download.sub-file; clicked => { Download.sub-file = true; Download.options-edited(); } }
+            }
+            if tab == 1: FormRow {
+                label: "자막 형식"; alignment: start;
+                Combo {
+                    model: ["SRT", "VTT", "ASS"];
+                    enabled: Download.subs && Download.sub-file;
+                    current-index <=> Download.sub-format;
+                    selected => { Download.options-edited(); }
+                }
+            }
+
+            // ---------- 후처리 ----------
+            if tab == 2: VerticalLayout {
+                spacing: 4px;
+                alignment: start;
+                HorizontalLayout { alignment: start; Check { text: "썸네일을 파일에 넣기"; checked <=> Download.embed-thumbnail; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: "썸네일을 이미지 파일로도 저장"; checked <=> Download.save-thumbnail; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: "제목·업로더 같은 메타데이터 넣기"; checked <=> Download.embed-metadata; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: "챕터 정보 넣기"; checked <=> Download.embed-chapters; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: "챕터별로 파일 나누기"; checked <=> Download.split-chapters; toggled => { Download.options-edited(); } } }
+            }
+            if tab == 2: HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                Text { text: "구간만 받기"; vertical-alignment: center; color: Theme.text; }
+                LineInput {
+                    width: 90px; height: 30px;
+                    placeholder: "1:30";
+                    text <=> Download.section-start;
+                    edited => { Download.options-edited(); }
+                }
+                Text { text: "~"; vertical-alignment: center; color: Theme.text; }
+                LineInput {
+                    width: 90px; height: 30px;
+                    placeholder: "3:00";
+                    text <=> Download.section-end;
+                    edited => { Download.options-edited(); }
+                }
+            }
+
+            // ---------- 재생목록 ----------
+            if tab == 3: HorizontalLayout {
+                spacing: 16px;
+                alignment: start;
+                Radio { text: "이 영상만"; checked: !Download.playlist-all; clicked => { Download.playlist-all = false; Download.options-edited(); } }
+                Radio { text: "재생목록 전체"; checked: Download.playlist-all; clicked => { Download.playlist-all = true; Download.options-edited(); } }
+            }
+            if tab == 3: FormRow {
+                label: "받을 범위";
+                LineInput {
+                    height: 30px;
+                    max-width: 260px;
+                    placeholder: "1-10, 15";
+                    enabled: Download.playlist-all;
+                    text <=> Download.playlist-items;
+                    edited => { Download.options-edited(); }
+                }
+                Rectangle { }
+            }
+            if tab == 3: VerticalLayout {
+                spacing: 4px;
+                alignment: start;
+                HorizontalLayout { alignment: start; Check { text: "파일 이름 앞에 번호 붙이기"; enabled: Download.playlist-all; checked <=> Download.number-prefix; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: "재생목록 이름으로 폴더 만들기"; enabled: Download.playlist-all; checked <=> Download.playlist-folder; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: "이미 받은 영상 건너뛰기"; checked <=> Download.skip-archived; toggled => { Download.options-edited(); } } }
+            }
+        }
+    }
+}

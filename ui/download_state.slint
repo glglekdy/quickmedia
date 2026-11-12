@@ -1,0 +1,67 @@
+// 다운로드 화면의 값과 콜백. Rust(src/ui/mod.rs)가 채우고 받는다.
+
+export struct CardView {
+    id: int,
+    site: string,
+    // 사이트 아이콘이 없을 때 보일 글자
+    letter: string,
+    icon: image,
+    has-icon: bool,
+    title: string,
+    status: string,
+    // "", "done", "error"
+    tone: string,
+    percent-text: string,
+    progress: float,
+    show-bar: bool,
+    can-open: bool,
+}
+
+export global Download {
+    in-out property <string> url;
+    in property <string> url-placeholder: "영상·재생목록 링크를 붙여넣으세요 (유튜브 외 사이트도 돼요)";
+    // 지금 값과 같은 프리셋: "best", "720p", "mp3", 없으면 ""
+    in property <string> preset;
+    // "세부 옵션 · 자막, 구간" 처럼 기본값과 달라진 항목을 붙인 글
+    in property <string> more-text: "세부 옵션";
+    in property <bool> panel-open;
+    in property <string> error;
+    in property <[CardView]> cards;
+    in property <string> folder;
+
+    // 세부 옵션. 고르는 값은 목록에서의 순서.
+    in-out property <bool> kind-audio;
+    in-out property <int> quality;
+    in-out property <int> container;
+    in-out property <int> codec;
+    in-out property <int> audio-format;
+    in-out property <int> audio-quality;
+    in-out property <bool> subs;
+    in-out property <int> sub-lang;
+    in-out property <string> sub-lang-custom;
+    in-out property <bool> auto-subs;
+    in-out property <bool> sub-file;
+    in-out property <int> sub-format;
+    in-out property <bool> embed-thumbnail;
+    in-out property <bool> save-thumbnail;
+    in-out property <bool> embed-metadata;
+    in-out property <bool> embed-chapters;
+    in-out property <bool> split-chapters;
+    in-out property <string> section-start;
+    in-out property <string> section-end;
+    in-out property <bool> playlist-all;
+    in-out property <string> playlist-items;
+    in-out property <bool> number-prefix;
+    in-out property <bool> playlist-folder;
+    in-out property <bool> skip-archived;
+
+    callback add();
+    callback paste();
+    callback preset-clicked(string);
+    callback toggle-panel();
+    callback options-edited();
+    callback clear-finished();
+    callback reveal(int);
+    callback pick-folder();
+    callback open-folder();
+}
