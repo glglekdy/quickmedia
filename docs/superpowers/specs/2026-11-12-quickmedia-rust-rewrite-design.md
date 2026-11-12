@@ -75,9 +75,9 @@ tests/fixtures/       yt-dlp 출력 샘플
 1. **넣기**: 링크가 비었거나 옵션이 틀리면 지금과 같은 안내. 누른 순간의 옵션·설정·폴더를 복사해 작업에 붙인다. 대기열은 동시 N개(설정의 1~5), 줄여도 돌던 작업은 끝까지 간다.
 2. **정보 조회**(사용자가 넣은 링크만): `yt-dlp --ignore-config <앱 인자> <고급 인자> -J --flat-playlist <링크>`. 받은 기록(`--download-archive`)은 이때 넘기지 않는다.
    - JSON 의 `_type` 이 `playlist` 면 항목을 펼친다. 항목마다 `url`(없으면 `webpage_url`), `title`, `playlist_index`(없으면 목록 위치). 받은 기록 건너뛰기가 켜져 있으면 Rust 가 `archive.txt` 를 읽어 `<ie_key 소문자> <id>` 로 대조해 건너뛴 개수를 센다. 200개를 넘으면 묻는다. 원래 카드는 "재생목록 · N개 추가(M개 건너뜀)" 로 끝난다.
-   - 아니면 제목, `extractor_key`, `webpage_url`, `requested_formats` 개수(스트림 수, 없으면 1), 파일 이름을 얻는다. 받은 기록에 있으면 "이미 받음" 으로 끝난다.
+   - 아니면 제목, `extractor_key`, `webpage_url`, 파일 이름을 얻는다. 받은 기록에 있으면 "이미 받음" 으로 끝난다.
 3. **이름 번호 붙이기**(덮어쓰기가 꺼져 있고 템플릿이 `.%(ext)s` 로 끝날 때): 조회 결과의 파일 이름과, 변환을 마친 최종 확장자(음원이면 고른 형식, 영상이면 고른 파일 형식)로 바꾼 이름 중 하나라도 있으면 템플릿 줄기에 ` (1)`, ` (2)` … 를 붙여 빈 이름을 찾는다. 템플릿에 넣을 때 `%` 는 `%%` 로.
-4. **받기**: 같은 인자에 `--no-playlist`(항목일 때), `--newline`, `--no-warnings`, `--encoding utf-8`, `--ffmpeg-location <설치 폴더>`, `--progress-template`(받은 바이트·전체 바이트·추정 전체·속도를 구분자로 한 줄), `--print after_move:filepath`, `--no-simulate` 를 더해 실행한다. 재생목록 항목은 2~3 을 건너뛰고(펼칠 때 받은 제목을 쓴다) 스트림 수는 진행률 줄을 보며 센다.
+4. **받기**: 같은 인자에 `--no-playlist`(항목일 때), `--newline`, `--no-warnings`, `--encoding utf-8`, `--ffmpeg-location <설치 폴더>`, `--progress-template`(받은 바이트·전체 바이트·추정 전체·속도를 구분자로 한 줄), `--print before_dl`(받을 스트림 목록), `--print after_move:filepath`, `--no-simulate` 를 더해 실행한다. 재생목록 항목은 2~3 을 건너뛴다(펼칠 때 받은 제목을 쓴다). 스트림 수는 `before_dl` 줄에서 얻는다.
 5. **진행률**: `(끝난 스트림 + 지금 스트림 비율) / 스트림 수`. 뒤로 가지 않게 하고, 0.12초 안에 5%p 미만으로 변하면 알리지 않는다. 문구는 `받는 중 · <속도>`, 마지막 스트림이 끝나면 `파일 정리 중…`.
 6. **끝**: 종료 코드 0 이고 경로가 찍혔으면 완료(카드를 누르면 탐색기에서 보기). 경로가 없으면 "이미 받음". 아니면 stderr 의 `ERROR:` 줄을 지금 `friendly_error` 표로 바꿔 보인다. 표에 없는 오류는 앞 160자에 "업데이트 화면에서 yt-dlp 갱신을 눌러 보세요" 를 덧붙인다.
 
@@ -92,7 +92,7 @@ tests/fixtures/       yt-dlp 출력 샘플
 - 자막을 영상에 넣을 때(`--embed-subs`)는 `--write-subs` 를 함께 준다. `--write-auto-subs` 만 있으면 일반 자막이 꺼진다. 1.x 는 넣은 뒤 자막 파일을 남기지 않았으므로, 남는지 실제로 확인하고 남으면 지운다.
 - 고급 인자는 맨 뒤에 붙여 사용자 값이 이긴다.
 
-yt-dlp 유틸에 기대던 검사는 Rust 로 쓴다: 구간 시각(`parse_duration`: 초, `mm:ss`, `hh:mm:ss`), 속도 제한(`parse_bytes`: `500K`, `5M`, `1.5M`), 재생목록 범위(`1-5,8,10-`), 폴더 이름 정리(`sanitize_filename` 에서 Windows 금지 문자 바꾸기). 고급 인자는 `yt-dlp --ignore-config <인자> --version` 을 뒤에서 실행해 종료 코드로 본다.
+yt-dlp 유틸에 기대던 검사는 Rust 로 쓴다: 구간 시각(`parse_duration`: 초, `mm:ss`, `hh:mm:ss`), 속도 제한(`parse_bytes`: `500K`, `5M`, `1.5M`), 재생목록 범위(`1-5,8,10-`), 폴더 이름 정리(`sanitize_filename` 에서 Windows 금지 문자 바꾸기). 고급 인자는 `://` 가 든 조각이 있으면 링크로 보고 막고, 아니면 링크 없이 `yt-dlp --ignore-config <인자>` 를 뒤에서 실행해 오류 줄로 본다(인자가 맞으면 "링크가 없다"는 오류만 난다. 정확한 방법은 구현 첫 단계에서 확인한다).
 
 ## yt-dlp 갱신
 
