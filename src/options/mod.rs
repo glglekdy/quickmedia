@@ -2,6 +2,8 @@
 
 pub mod args;
 pub mod model;
+pub mod validate;
 
 pub use args::*;
 pub use model::*;
+pub use validate::*;
