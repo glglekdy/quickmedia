@@ -1,5 +1,7 @@
 //! 화면. Slint 는 Rust 가 정한 상태를 그리기만 한다.
 
+pub mod cards;
+pub mod download;
 pub mod nav;
 
 use slint::ComponentHandle;
