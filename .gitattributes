@@ -2,3 +2,4 @@
 android/gradlew text eol=lf
 *.bat text eol=crlf
 *.so binary
+tests/fixtures/* -text
