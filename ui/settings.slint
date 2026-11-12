@@ -1,0 +1,300 @@
+// 설정 화면 4개(로그인 / 네트워크 / 파일 / 고급). 바꾸면 바로 저장한다.
+// 제목 + 설명 + 카드(이름 | 입력 칸, 그 아래 안내·오류) 틀.
+import { Theme } from "theme.slint";
+import { Btn, LineInput, Combo, Check, Radio, Spin, ScrollArea } from "widgets.slint";
+import { Settings } from "settings_state.slint";
+
+// 이름 | 입력 칸 + 안내 + 오류
+component Row inherits HorizontalLayout {
+    in property <string> label;
+    in property <length> label-width: 112px;
+    in property <string> hint;
+    in property <string> error;
+    spacing: 12px;
+
+    // 이름은 입력 칸 높이에 맞춰 위쪽에 둔다. 줄 높이는 오른쪽 칸(안내·오류 포함)이 정한다.
+    VerticalLayout {
+        width: root.label-width;
+        alignment: start;
+        Text {
+            height: 30px;
+            text: root.label;
+            color: Theme.text;
+            vertical-alignment: center;
+        }
+    }
+    VerticalLayout {
+        spacing: 4px;
+        alignment: start;
+        @children
+        if root.hint != "": Text {
+            text: root.hint;
+            color: Theme.muted;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+        if root.error != "": Text {
+            text: root.error;
+            color: Theme.danger;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+    }
+}
+
+// 고르는 단추가 이름 자리에 오는 줄(로그인 화면)
+component RadioRow inherits HorizontalLayout {
+    in property <string> text;
+    in property <bool> checked;
+    in property <string> hint;
+    in property <string> error;
+    callback clicked();
+    spacing: 12px;
+
+    VerticalLayout {
+        width: 160px;
+        alignment: start;
+        HorizontalLayout {
+            height: 30px;
+            alignment: start;
+            Radio { text: root.text; checked: root.checked; clicked => { root.clicked(); } }
+        }
+    }
+    VerticalLayout {
+        spacing: 4px;
+        alignment: start;
+        @children
+        if root.hint != "": Text {
+            text: root.hint;
+            color: Theme.muted;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+        if root.error != "": Text {
+            text: root.error;
+            color: Theme.danger;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+    }
+}
+
+export component SettingsPage inherits Rectangle {
+    // login, network, file, advanced
+    in property <string> page;
+
+    property <string> title: page == "login" ? "로그인" : page == "network" ? "네트워크" : page == "file" ? "파일" : "고급";
+    property <string> description: page == "login" ? "로그인해야 볼 수 있는 영상은 브라우저의 로그인 정보(쿠키)를 써서 받아요."
+        : page == "network" ? "인터넷 연결과 받는 속도에 관한 설정이에요."
+        : page == "file" ? "받은 파일의 이름을 어떻게 지을지 정해요."
+        : "yt-dlp 명령줄 옵션을 그대로 넣어요. 다른 설정보다 우선해요.";
+
+    ScrollArea {
+        content-height: body.min-height;
+        body := VerticalLayout {
+            padding-left: 28px; padding-right: 28px; padding-top: 24px; padding-bottom: 24px;
+            alignment: start;
+
+            HorizontalLayout {
+                spacing: 10px;
+                alignment: start;
+                Text {
+                    text: root.title;
+                    color: Theme.heading;
+                    font-size: 22px;
+                    font-weight: 600;
+                }
+                if Settings.saved-badge: HorizontalLayout {
+                    spacing: 3px;
+                    VerticalLayout {
+                        alignment: center;
+                        Image {
+                            width: 12px; height: 12px;
+                            source: @image-url("../assets/check.svg");
+                            colorize: Theme.success;
+                        }
+                    }
+                    Text {
+                        text: "저장했어요";
+                        color: Theme.success;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+            Rectangle { height: 4px; }
+            Text {
+                text: root.description;
+                color: Theme.muted;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+            Rectangle { height: 16px; }
+
+            Rectangle {
+                background: Theme.card-bg;
+                border-width: 1px;
+                border-color: Theme.border;
+                border-radius: 10px;
+
+                VerticalLayout {
+                    padding-left: 20px; padding-right: 20px; padding-top: 18px; padding-bottom: 18px;
+                    spacing: 14px;
+
+                    // ---------- 로그인 ----------
+                    if page == "login": RadioRow {
+                        text: "사용 안 함";
+                        checked: Settings.cookies == 0;
+                        clicked => { Settings.cookies = 0; Settings.commit("cookies"); }
+                    }
+                    if page == "login": RadioRow {
+                        text: "브라우저에서 가져오기";
+                        checked: Settings.cookies == 1;
+                        hint: "Chrome·Edge 는 켜져 있으면 쿠키를 못 읽을 수 있어요";
+                        clicked => { Settings.cookies = 1; Settings.commit("cookies"); }
+                        HorizontalLayout {
+                            alignment: start;
+                            Combo {
+                                model: ["Firefox", "Edge", "Chrome", "Whale", "Brave", "Opera", "Vivaldi", "Chromium"];
+                                enabled: Settings.cookies == 1;
+                                current-index <=> Settings.cookie-browser;
+                                selected => { Settings.commit("cookies"); }
+                            }
+                        }
+                    }
+                    if page == "login": RadioRow {
+                        text: "cookies.txt 파일";
+                        checked: Settings.cookies == 2;
+                        error: Settings.error-cookie-file;
+                        clicked => { Settings.cookies = 2; Settings.commit("cookies"); }
+                        HorizontalLayout {
+                            spacing: 6px;
+                            max-width: 400px;
+                            LineInput {
+                                height: 30px;
+                                placeholder: "파일을 고르세요";
+                                enabled: Settings.cookies == 2;
+                                invalid: Settings.error-cookie-file != "";
+                                text <=> Settings.cookie-file;
+                                accepted => { Settings.commit("cookies"); }
+                                left => { Settings.commit("cookies"); }
+                            }
+                            Btn {
+                                text: "찾기";
+                                enabled: Settings.cookies == 2;
+                                clicked => { Settings.browse-cookie(); }
+                            }
+                        }
+                    }
+
+                    // ---------- 네트워크 ----------
+                    if page == "network": Row {
+                        label: "프록시";
+                        LineInput {
+                            height: 30px;
+                            max-width: 400px;
+                            placeholder: "http://127.0.0.1:8080";
+                            text <=> Settings.proxy;
+                            accepted => { Settings.commit("proxy"); }
+                            left => { Settings.commit("proxy"); }
+                        }
+                    }
+                    if page == "network": Row {
+                        label: "속도 제한";
+                        hint: "비워 두면 제한 없이 받아요. 5M 은 초당 5MB";
+                        error: Settings.error-rate-limit;
+                        HorizontalLayout {
+                            alignment: start;
+                            LineInput {
+                                width: 160px; height: 30px;
+                                placeholder: "예: 5M";
+                                invalid: Settings.error-rate-limit != "";
+                                text <=> Settings.rate-limit;
+                                accepted => { Settings.commit("rate_limit"); }
+                                left => { Settings.commit("rate_limit"); }
+                            }
+                        }
+                    }
+                    if page == "network": Row {
+                        label: "재시도 횟수";
+                        HorizontalLayout {
+                            alignment: start;
+                            Spin {
+                                minimum: 0; maximum: 50;
+                                value <=> Settings.retries;
+                                changed => { Settings.commit("retries"); }
+                            }
+                        }
+                    }
+                    if page == "network": Row {
+                        label: "동시 다운로드";
+                        hint: "한 번에 받는 영상 수 (1~5)";
+                        HorizontalLayout {
+                            alignment: start;
+                            Spin {
+                                minimum: 1; maximum: 5;
+                                value <=> Settings.concurrency;
+                                changed => { Settings.commit("concurrency"); }
+                            }
+                        }
+                    }
+
+                    // ---------- 파일 ----------
+                    if page == "file": Row {
+                        label: "파일 이름";
+                        HorizontalLayout {
+                            alignment: start;
+                            Combo {
+                                width: 170px;
+                                model: ["제목", "제목 [ID]", "업로더 - 제목", "날짜 제목", "직접 입력"];
+                                current-index <=> Settings.name-template;
+                                selected => { Settings.commit("template"); }
+                            }
+                        }
+                    }
+                    if page == "file": Row {
+                        label: "직접 입력";
+                        hint: "yt-dlp 출력 템플릿 문법을 써요";
+                        error: Settings.error-custom-template;
+                        LineInput {
+                            height: 30px;
+                            max-width: 400px;
+                            enabled: Settings.name-template == 4;
+                            invalid: Settings.error-custom-template != "";
+                            text <=> Settings.custom-template;
+                            accepted => { Settings.commit("template"); }
+                            left => { Settings.commit("template"); }
+                        }
+                    }
+                    if page == "file": Row {
+                        label: "";
+                        hint: "끄면 '제목 (1).mp4' 처럼 번호를 붙여 새로 받아요";
+                        HorizontalLayout {
+                            alignment: start;
+                            Check {
+                                text: "같은 이름의 파일이 있으면 덮어쓰기";
+                                checked <=> Settings.overwrite;
+                                toggled => { Settings.commit("overwrite"); }
+                            }
+                        }
+                    }
+
+                    // ---------- 고급 ----------
+                    if page == "advanced": Row {
+                        label: "yt-dlp 옵션";
+                        error: Settings.error-extra-args;
+                        LineInput {
+                            height: 30px;
+                            max-width: 400px;
+                            placeholder: "예: --limit-rate 1M --no-mtime";
+                            invalid: Settings.error-extra-args != "";
+                            text <=> Settings.extra-args;
+                            accepted => { Settings.commit("extra_args"); }
+                            left => { Settings.commit("extra_args"); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

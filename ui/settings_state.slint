@@ -1,0 +1,31 @@
+// 설정 화면의 값과 콜백. Rust(src/ui/app.rs)가 채우고 받는다.
+// 칸에는 아직 저장하지 않은 값이 들어 있을 수 있다. 저장은 commit(묶음 이름) 으로 맡긴다.
+
+export global Settings {
+    // 0 사용 안 함, 1 브라우저, 2 파일
+    in-out property <int> cookies;
+    in-out property <int> cookie-browser;
+    in-out property <string> cookie-file;
+    in-out property <string> proxy;
+    in-out property <string> rate-limit;
+    in-out property <int> retries;
+    in-out property <int> concurrency;
+    // 마지막(4)이 직접 입력
+    in-out property <int> name-template;
+    in-out property <string> custom-template;
+    in-out property <bool> overwrite;
+    in-out property <string> extra-args;
+
+    // 칸 아래 오류 문구. 없으면 빈 글.
+    in property <string> error-cookie-file;
+    in property <string> error-rate-limit;
+    in property <string> error-custom-template;
+    in property <string> error-extra-args;
+
+    // "✓ 저장했어요" 를 잠깐 보인다
+    in property <bool> saved-badge;
+
+    // 묶음: cookies, proxy, rate_limit, retries, concurrency, template, overwrite, extra_args
+    callback commit(string);
+    callback browse-cookie();
+}

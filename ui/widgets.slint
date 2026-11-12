@@ -310,3 +310,46 @@ export component FormRow inherits HorizontalLayout {
     }
     @children
 }
+
+// 숫자를 위아래 화살표로 고르는 칸
+export component Spin inherits Rectangle {
+    in-out property <int> value;
+    in property <int> minimum: 0;
+    in property <int> maximum: 100;
+    callback changed(int);
+
+    function step(by: int) {
+        if root.value + by >= root.minimum && root.value + by <= root.maximum {
+            root.value += by;
+            root.changed(root.value);
+        }
+    }
+
+    width: 90px;
+    height: 30px;
+    horizontal-stretch: 0;
+    border-radius: 6px;
+    background: Theme.input-bg;
+
+    Text {
+        x: 10px; width: parent.width - 32px;
+        text: root.value;
+        color: Theme.text;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+    Rectangle {
+        x: parent.width - 21px; y: 1px; width: 20px; height: parent.height / 2 - 1px;
+        border-radius: 4px;
+        background: up.has-hover ? Theme.btn-hover : transparent;
+        Image { width: 9px; height: 9px; source: @image-url("../assets/arrow-up.svg"); }
+        up := TouchArea { clicked => { root.step(1); } }
+    }
+    Rectangle {
+        x: parent.width - 21px; y: parent.height / 2; width: 20px; height: parent.height / 2 - 1px;
+        border-radius: 4px;
+        background: down.has-hover ? Theme.btn-hover : transparent;
+        Image { width: 9px; height: 9px; source: @image-url("../assets/arrow-down.svg"); }
+        down := TouchArea { clicked => { root.step(-1); } }
+    }
+}

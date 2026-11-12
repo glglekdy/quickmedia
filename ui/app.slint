@@ -3,8 +3,10 @@ import { Theme } from "theme.slint";
 import { Sidebar, Nav } from "sidebar.slint";
 import { Download, CardView } from "download_state.slint";
 import { DownloadPage } from "download.slint";
+import { Settings } from "settings_state.slint";
+import { SettingsPage } from "settings.slint";
 
-export { Theme, Nav, Download, CardView }
+export { Theme, Nav, Download, CardView, Settings }
 
 export component AppWindow inherits Window {
     title: "QuickMedia";
@@ -27,7 +29,10 @@ export component AppWindow inherits Window {
             download := DownloadPage {
                 visible: Nav.page == "download";
             }
-            if Nav.page != "download": Text {
+            if Nav.page == "login" || Nav.page == "network" || Nav.page == "file" || Nav.page == "advanced": SettingsPage {
+                page: Nav.page;
+            }
+            if Nav.page == "update": Text {
                 text: Nav.page;
                 color: Theme.muted;
             }

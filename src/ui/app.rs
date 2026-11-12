@@ -11,15 +11,17 @@ use slint::{ComponentHandle, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, VecM
 
 use super::cards::{Card, CardState};
 use super::download::{AddError, Change, Controller};
-use super::{nav, win, AppWindow, CardView, Download, Nav};
+use super::settings::{ExtraStep, SettingsForm, ERROR_KEYS};
+use super::{nav, win, AppWindow, CardView, Download, Nav, Settings};
 use crate::app_info::{self, VERSION};
 use crate::options::{
     apply_preset, changed_summary, matching_preset, options_from_map, options_to_map, settings_from_map,
-    DownloadOptions, AUDIO_FORMATS, AUDIO_QUALITIES, CODECS, CONTAINERS, QUALITIES, SUB_FORMATS,
+    settings_to_map, AppSettings, DownloadOptions, AUDIO_FORMATS, AUDIO_QUALITIES, BROWSERS, CODECS, CONTAINERS,
+    COOKIE_MODES, NAME_TEMPLATE_KEYS, QUALITIES, SUB_FORMATS,
 };
 use crate::site::{letter_of, IconPixels, SiteIcons};
 use crate::store::{read_group, write_group, KeyValue, Registry};
-use crate::ytdlp::{run_job, Event, JobSpec, KillGroup, Tools};
+use crate::ytdlp::{check_extra_args, run_job, Event, JobSpec, KillGroup, Tools};
 use crate::{migrate, ytdlp_update};
 
 /// 자막 언어 상자의 값. 마지막은 "직접 입력".
@@ -28,6 +30,9 @@ const SUB_LANGS: [&str; 4] = ["ko", "en", "all", ""];
 pub struct App {
     pub window: slint::Weak<AppWindow>,
     pub controller: RefCell<Controller>,
+    pub form: RefCell<SettingsForm>,
+    /// "✓ 저장했어요" 를 끄는 타이머.
+    badge_timer: slint::Timer,
     cards: Rc<VecModel<CardView>>,
     pub store: RefCell<Registry>,
     pub tools: Arc<Mutex<Tools>>,
@@ -151,6 +156,38 @@ fn read_options(dl: &Download) -> DownloadOptions {
         number_prefix: dl.get_number_prefix(),
         playlist_folder: dl.get_playlist_folder(),
         skip_archived: dl.get_skip_archived(),
+    }
+}
+
+/// 저장된 설정으로 칸을 채운다.
+fn show_settings(st: &Settings, s: &AppSettings) {
+    st.set_cookies(index_of(COOKIE_MODES, &s.cookies));
+    st.set_cookie_browser(index_of(BROWSERS, &s.cookie_browser));
+    st.set_cookie_file(s.cookie_file.as_str().into());
+    st.set_proxy(s.proxy.as_str().into());
+    st.set_rate_limit(s.rate_limit.as_str().into());
+    st.set_retries(s.retries as i32);
+    st.set_concurrency(s.concurrency as i32);
+    st.set_name_template(index_of(NAME_TEMPLATE_KEYS, &s.name_template));
+    st.set_custom_template(s.custom_template.as_str().into());
+    st.set_overwrite(s.overwrite);
+    st.set_extra_args(s.extra_args.as_str().into());
+}
+
+/// 칸에 지금 들어 있는 값.
+fn read_settings(st: &Settings) -> AppSettings {
+    AppSettings {
+        cookies: value_at(COOKIE_MODES, st.get_cookies()),
+        cookie_browser: value_at(BROWSERS, st.get_cookie_browser()),
+        cookie_file: st.get_cookie_file().to_string(),
+        proxy: st.get_proxy().to_string(),
+        rate_limit: st.get_rate_limit().to_string(),
+        retries: st.get_retries().max(0) as u32,
+        name_template: value_at(NAME_TEMPLATE_KEYS, st.get_name_template()),
+        custom_template: st.get_custom_template().to_string(),
+        overwrite: st.get_overwrite(),
+        concurrency: st.get_concurrency().max(1) as u32,
+        extra_args: st.get_extra_args().to_string(),
     }
 }
 
@@ -289,6 +326,117 @@ impl App {
         }
     }
 
+    /// 칸 아래 오류 문구를 화면에 맞춘다.
+    fn show_setting_errors(&self) {
+        let Some(window) = self.window() else { return };
+        let st = window.global::<Settings>();
+        let form = self.form.borrow();
+        for key in ERROR_KEYS {
+            let text: slint::SharedString = form.error(key).into();
+            match key {
+                "cookie_file" => st.set_error_cookie_file(text),
+                "rate_limit" => st.set_error_rate_limit(text),
+                "custom_template" => st.set_error_custom_template(text),
+                _ => st.set_error_extra_args(text),
+            }
+        }
+    }
+
+    /// 저장된 설정이 바뀌었다: 레지스트리에 쓰고, 대기열·아이콘에 알리고, "저장했어요" 를 잠깐 보인다.
+    fn settings_saved(&self) {
+        let saved = self.form.borrow().saved().clone();
+        write_group(&mut *self.store.borrow_mut(), "settings", &settings_to_map(&saved));
+        self.icons.set_proxy(&saved.proxy);
+        self.controller.borrow_mut().set_settings(saved);
+        self.sync();
+        let Some(window) = self.window() else { return };
+        window.global::<Settings>().set_saved_badge(true);
+        self.badge_timer.start(slint::TimerMode::SingleShot, std::time::Duration::from_millis(1500), || {
+            with_app(|app| {
+                if let Some(window) = app.window() {
+                    window.global::<Settings>().set_saved_badge(false);
+                }
+            })
+        });
+    }
+
+    /// 고급 옵션을 뒤에서 yt-dlp 로 확인하고, 결과가 오면 저장하거나 오류를 보인다.
+    fn check_extra_later(&self, text: String) {
+        let tools = self.tools.lock().unwrap().clone();
+        let group = self.group.clone();
+        std::thread::spawn(move || {
+            let error = check_extra_args(&tools, &group, &text);
+            let _ = slint::invoke_from_event_loop(move || {
+                with_app(|app| {
+                    let changed = app.form.borrow_mut().apply_extra(&text, error);
+                    app.show_setting_errors();
+                    if changed {
+                        app.settings_saved();
+                        // 그사이 화면을 떠나 되돌려진 칸은 새 값으로 채운다
+                        if let Some(window) = app.window() {
+                            let st = window.global::<Settings>();
+                            st.set_extra_args(app.form.borrow().view().extra_args.as_str().into());
+                        }
+                    }
+                })
+            });
+        });
+    }
+
+    /// 묶음의 칸을 저장한다. 틀리면 칸 아래 오류를 보인다.
+    fn commit_settings(&self, group: &str) {
+        let Some(window) = self.window() else { return };
+        self.form.borrow_mut().set_view(read_settings(&window.global::<Settings>()));
+        let changed = if group == "extra_args" {
+            let step = self.form.borrow().extra_step();
+            match step {
+                ExtraStep::Ask(text) => {
+                    self.form.borrow_mut().clear_error("extra_args");
+                    self.check_extra_later(text);
+                    false
+                }
+                // 저장된 값 그대로거나 yt-dlp 없이 알 수 있는 경우
+                _ => self.form.borrow_mut().commit(group, &|_| None),
+            }
+        } else {
+            self.form.borrow_mut().commit(group, &|_| None)
+        };
+        self.show_setting_errors();
+        if changed {
+            self.settings_saved();
+        }
+    }
+
+    /// 설정 화면을 떠나거나 창을 닫을 때. 맞는 글자는 저장하고 나머지는 저장된 값으로 되돌린다.
+    /// `closing` 이면 고급 옵션 확인을 기다렸다가 끝낸다.
+    fn leave_settings(&self, closing: bool) {
+        let Some(window) = self.window() else { return };
+        let st = window.global::<Settings>();
+        if !nav::is_settings_page(&window.global::<Nav>().get_page()) {
+            return;
+        }
+        self.form.borrow_mut().set_view(read_settings(&st));
+        let step = self.form.borrow().extra_step();
+        let changed = match step {
+            ExtraStep::Ask(text) if closing => {
+                let tools = self.tools.lock().unwrap().clone();
+                let error = check_extra_args(&tools, &self.group, &text);
+                self.form.borrow_mut().leave(&|_| error.clone())
+            }
+            ExtraStep::Ask(text) => {
+                self.check_extra_later(text);
+                // 확인이 끝나기 전에는 고급 옵션을 저장하지 않는다
+                self.form.borrow_mut().leave(&|_| Some(String::new()))
+            }
+            _ => self.form.borrow_mut().leave(&|_| None),
+        };
+        show_settings(&st, self.form.borrow().view());
+        self.show_setting_errors();
+        if changed {
+            self.settings_saved();
+        }
+    }
+
     fn options_changed(&self, opts: DownloadOptions) {
         self.controller.borrow_mut().set_options(opts);
         self.save_options();
@@ -322,6 +470,9 @@ fn wire_nav(window: &AppWindow) {
         let Some(window) = weak.upgrade() else { return };
         let nav_global = window.global::<Nav>();
         let (page, open) = nav::nav_after_click(&nav_global.get_page(), nav_global.get_settings_open(), &key);
+        if page != nav_global.get_page().as_str() {
+            with_app(|app| app.leave_settings(false));
+        }
         nav_global.set_page(page.into());
         nav_global.set_settings_open(open);
     });
@@ -391,6 +542,20 @@ fn wire_download(window: &AppWindow) {
     dl.on_open_folder(|| with_app(|app| win::open_folder(app.controller.borrow().folder())));
 }
 
+fn wire_settings(window: &AppWindow) {
+    let st = window.global::<Settings>();
+    st.on_commit(|group| with_app(|app| app.commit_settings(&group)));
+    st.on_browse_cookie(|| {
+        with_app(|app| {
+            let Some(window) = app.window() else { return };
+            if let Some(path) = win::pick_file("cookies.txt 고르기", "쿠키 파일", &["txt"]) {
+                window.global::<Settings>().set_cookie_file(path.to_string_lossy().as_ref().into());
+                app.commit_settings("cookies");
+            }
+        })
+    });
+}
+
 /// 창을 만들고 저장된 값으로 채운다.
 pub fn build() -> Result<AppWindow, slint::PlatformError> {
     let window = AppWindow::new()?;
@@ -416,7 +581,7 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
     let (job_tools, job_group) = (tools.clone(), group.clone());
     let controller = Controller::new(
         opts.clone(),
-        settings,
+        settings.clone(),
         folder.clone(),
         data.join("archive.txt"),
         Box::new(move |id, spec| start_job(&job_tools, &job_group, id, spec)),
@@ -429,10 +594,13 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
     dl.set_folder(folder.as_str().into());
     dl.set_panel_open(panel_open);
     show_options(&dl, &opts);
+    show_settings(&window.global::<Settings>(), &settings);
 
     let app = Rc::new(App {
         window: window.as_weak(),
         controller: RefCell::new(controller),
+        form: RefCell::new(SettingsForm::new(settings.clone())),
+        badge_timer: slint::Timer::default(),
         cards,
         store: RefCell::new(store),
         tools,
@@ -445,10 +613,14 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
 
     wire_nav(&window);
     wire_download(&window);
+    wire_settings(&window);
 
     // 닫을 때: 기다리던 작업은 버린다. 돌던 yt-dlp·ffmpeg 는 앱이 끝나며 작업 개체와 함께 끝난다.
     window.window().on_close_requested(|| {
-        with_app(|app| app.controller.borrow_mut().shutdown());
+        with_app(|app| {
+            app.leave_settings(true);
+            app.controller.borrow_mut().shutdown();
+        });
         slint::CloseRequestResponse::HideWindow
     });
 

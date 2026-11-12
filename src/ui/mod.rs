@@ -4,6 +4,7 @@ pub mod app;
 pub mod cards;
 pub mod download;
 pub mod nav;
+pub mod settings;
 mod win;
 
 use slint::ComponentHandle;
@@ -40,6 +41,12 @@ mod debug {
                 target.dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
                 target.dispatch_event(WindowEvent::KeyReleased { text });
             }
+            return;
+        }
+        if step == "key:enter" {
+            let text: slint::SharedString = slint::platform::Key::Return.into();
+            target.dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
+            target.dispatch_event(WindowEvent::KeyReleased { text });
             return;
         }
         let Some((x, y)) = step.split_once(',') else { return };

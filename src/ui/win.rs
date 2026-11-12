@@ -63,7 +63,6 @@ pub fn pick_folder(title: &str, start: &str) -> Option<PathBuf> {
     rfd::FileDialog::new().set_title(title).set_directory(start).pick_folder()
 }
 
-#[allow(dead_code)] // 설정 화면(쿠키 파일 찾기)이 쓴다
 pub fn pick_file(title: &str, filter_name: &str, extensions: &[&str]) -> Option<PathBuf> {
     rfd::FileDialog::new().set_title(title).add_filter(filter_name, extensions).add_filter("모든 파일", &["*"]).pick_file()
 }
