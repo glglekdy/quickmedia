@@ -1,0 +1,5 @@
+QMN|[]
+QMP|1024|NA|NA|  11.90KiB/s
+QMP|52224|NA|NA| 306.39KiB/s
+QMP|657043|NA|NA|   3.33MiB/s
+QMF|D:\받기\라이브.mp4

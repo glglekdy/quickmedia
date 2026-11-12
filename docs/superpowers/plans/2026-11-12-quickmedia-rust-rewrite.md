@@ -42,7 +42,7 @@
 - Modify: `.gitignore` (`target/` 추가)
 
 **Interfaces:**
-- Produces: `build/tools/yt-dlp.exe`, `build/tools/ffmpeg.exe`(git 에 안 올라감). findings 문서의 결론. `tests/fixtures/probe_single.json`, `probe_playlist.json`, `download_two_streams.txt`, `download_unknown_size.txt`, `error_unavailable.txt`.
+- Produces: `build/tools/yt-dlp.exe`, `build/tools/ffmpeg.exe`(git 에 안 올라감). findings 문서의 결론. `tests/fixtures/probe_single.txt`, `probe_playlist.txt`, `download_two_streams.txt`, `download_unknown_size.txt`, `error_unavailable.txt`.
 
 - [ ] **Step 1:** `Cargo.toml`(패키지 `quickmedia` 2.0.0, edition 2021, `[[bin]] name = "QuickMedia"`), 빈 `src/lib.rs`, `fn main() {}` 인 `src/main.rs` 를 만들고 `cargo build` 가 되는지 본다.
 - [ ] **Step 2:** `scripts/fetch-tools.ps1 [-Dest build/tools]`: yt-dlp 최신 릴리즈의 `yt-dlp.exe` 와 BtbN `ffmpeg-master-latest-win64-gpl.zip` 의 `ffmpeg.exe` 를 받는다. 이미 있으면 건너뛴다. 실행해서 두 파일을 받는다.
@@ -170,7 +170,7 @@ fn percent_in_playlist_title_is_escaped() {
 
 - [ ] **Step 1:** `tests/test_job_queue.py`(4), `tests/test_downloader.py`(9)의 경우를 옮긴다. `NumberIfExistsPP` 경우는 `numbered_template` 으로 본다.
 - [ ] **Step 2:** fixtures 로 시험을 더한다:
-  - `probe_single.json` → `Probe::Single`, `probe_playlist.json` → 항목 수·순번, `archived` 가 일부를 true 로 주면 `skipped` 가 그 수.
+  - `probe_single.txt` → `Probe::Single`, `probe_playlist.txt` → 항목 수·순번, `archived` 가 일부를 true 로 주면 `skipped` 가 그 수.
   - `download_two_streams.txt` 를 줄마다 `parse_line` → `ProgressMeter` 에 넣으면 퍼센트가 줄어드는 일이 없고 마지막이 `(100.0, "파일 정리 중…")`, `Line::File` 경로가 한글 그대로다(Review Focus 1).
   - `download_unknown_size.txt`: `total` 이 `None` 인 줄에서 `on_line` 이 `None` 이고 패닉이 없다(Review Focus 4).
   - `parse_line` 에 `""`, `"WARNING: x"`, `"QMP|1|2"`(칸 부족), `"QMP|a|b|c|d"`, `"QMF|C:\\받기\\제목.mp4\r"` → 앞 넷은 `Line::Other`, 마지막은 `\r` 없는 경로(Review Focus 3).
