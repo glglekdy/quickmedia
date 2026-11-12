@@ -280,29 +280,17 @@ impl App {
         let changes = self.controller.borrow_mut().take_changes();
         let controller = self.controller.borrow();
         let cards = controller.cards();
-        // 변화는 일어난 순서대로지만 내용은 지금 것을 쓴다. 넣은 자리의 카드가 그새 지워졌을 수는 없다.
-        let mut shadow: Vec<Option<u32>> = (0..self.cards.row_count()).map(|i| self.cards.row_data(i).map(|v| v.id as u32)).collect();
-        for change in &changes {
-            match *change {
-                Change::Insert(at) => shadow.insert(at.min(shadow.len()), None),
-                Change::Remove(at) if at < shadow.len() => {
-                    shadow.remove(at);
-                }
-                _ => {}
-            }
-        }
-        // 길이가 달라졌거나 순서가 바뀌었으면 통째로 다시 채운다. 아니면 바뀐 줄만.
-        let same_shape = shadow.len() == self.cards.row_count() && !changes.iter().any(|c| !matches!(c, Change::Update(_)));
-        if same_shape {
-            for change in changes {
-                if let Change::Update(index) = change {
-                    if let Some(card) = cards.get(index) {
-                        self.cards.set_row_data(index, self.view(card));
-                    }
-                }
-            }
-        } else {
+        // 카드가 늘거나 줄었으면 통째로 다시 채우고, 아니면 바뀐 줄만 고친다.
+        if changes.iter().any(|c| !matches!(c, Change::Update(_))) {
             self.cards.set_vec(cards.iter().map(|c| self.view(c)).collect::<Vec<_>>());
+            return;
+        }
+        for change in changes {
+            if let Change::Update(index) = change {
+                if let Some(card) = cards.get(index).filter(|_| index < self.cards.row_count()) {
+                    self.cards.set_row_data(index, self.view(card));
+                }
+            }
         }
     }
 

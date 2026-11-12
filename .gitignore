@@ -1,19 +1,8 @@
 build/
 dist/
-*.spec
-__pycache__/
-*.pyc
-.pytest_cache/
-
-# 안드로이드
-android/.gradle/
-android/.kotlin/
-android/build/
-android/app/build/
-android/local.properties
-*.jks
-*.keystore
-
-# Rust
 target/
 .superpowers/
+
+# 서명 키는 올리지 않는다
+*.jks
+*.keystore
