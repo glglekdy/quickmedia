@@ -7,7 +7,8 @@
 1. **`-J` 결과에 파일 이름이 없다.** 조회에 `--print "QMFN|%(filename)s"` 를 함께 준다. stdout 에 `QMFN|…` 줄이 먼저, JSON 한 줄이 뒤에 나온다. 재생목록이면 항목마다 `QMFN|… .NA` 줄이 나오므로 무시한다. `parse_probe` 는 stdout 전체를 받는다. 샘플 이름은 `probe_single.txt`, `probe_playlist.txt`.
 2. **`--print` 는 진행률을 끈다.** `--progress` 를 더해야 `QMP` 줄이 나온다.
 3. **자막을 넣은 뒤 자막 파일이 남는다**(`--embed-subs --write-subs`). `--compat-options no-keep-subs` 를 더하면 yt-dlp 가 지운다. 앱이 지우는 코드는 필요 없다.
-4. **유튜브는 JS 런타임(deno)이 없으면 경고가 나오고 일부 형식이 빠질 수 있다.** 1.x(라이브러리 호출)도 같은 처지라 이번 범위 밖이다. `--no-warnings` 로 경고는 숨긴다.
+4. **자막을 받을 때도 진행률 줄이 나온다.** 스트림이 바뀐 것으로 잘못 셀 수 있어 진행률 줄에 형식 ID 를 붙인다: `--print "before_dl:QMN|%(format_id)s"` → `QMN|243+251`(한 스트림이면 `QMN|251`), `--progress-template "download:QMP|%(info.format_id)s|…"` → `QMP|243|<받은>|<전체>|<추정>|<속도>`. 자막 줄은 `QMP|NA|…` 로 나오고 `QMN` 보다 먼저 온다. `QMN` 목록에 없는 ID 의 줄은 무시한다. 아래 표의 `QMN`·`QMP` 형식은 이 형식으로 읽는다.
+5. **유튜브는 JS 런타임(deno)이 없으면 경고가 나오고 일부 형식이 빠질 수 있다.** 1.x(라이브러리 호출)도 같은 처지라 이번 범위 밖이다. `--no-warnings` 로 경고는 숨긴다.
 
 ## 확인한 것
 
