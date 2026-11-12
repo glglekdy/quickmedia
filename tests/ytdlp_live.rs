@@ -175,3 +175,22 @@ fn closing_the_group_kills_the_download() {
         std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
     assert!(!names.is_empty() && names.iter().all(|n| n.ends_with(".part") || n.ends_with(".ytdl")), "{names:?}");
 }
+
+#[test]
+#[ignore]
+fn ytdlp_update_installs() {
+    use quickmedia::ytdlp_update::{fetch_latest, install};
+    let bin = folder("bin");
+    let group = KillGroup::new().unwrap();
+    let release = fetch_latest("0").unwrap().expect("0 보다 새 릴리즈가 있어야 한다");
+    assert!(release.asset_url.ends_with("/yt-dlp.exe") && release.asset_size > 1_000_000, "{release:?}");
+    let seen = Mutex::new((0u64, 0u64));
+    let found = install(&release, &bin, &group, &|done, total| *seen.lock().unwrap() = (done, total)).unwrap();
+    assert_eq!(found.version, release.version);
+    assert_eq!(found.path, bin.join(format!("yt-dlp-{}.exe", release.version)));
+    assert_eq!(ytdlp_version(&found.path, &group).as_deref(), Some(release.version.as_str()));
+    let (done, total) = *seen.lock().unwrap();
+    assert!(done == total && done == release.asset_size, "{done}/{total}");
+    // 지금 버전과 같으면 받을 게 없다
+    assert_eq!(fetch_latest(&release.version).unwrap(), None);
+}

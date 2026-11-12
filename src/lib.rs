@@ -9,3 +9,4 @@ pub mod site;
 pub mod store;
 pub mod updater;
 pub mod ytdlp;
+pub mod ytdlp_update;
