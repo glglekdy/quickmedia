@@ -1,0 +1,28 @@
+// 메인 창: 왼쪽 메뉴 | 화면(다운로드 · 설정 4개 · 업데이트).
+import { Theme } from "theme.slint";
+import { Sidebar, Nav } from "sidebar.slint";
+
+export { Theme, Nav }
+
+export component AppWindow inherits Window {
+    title: "QuickMedia";
+    icon: @image-url("../assets/icon.png");
+    preferred-width: 920px;
+    preferred-height: 640px;
+    min-width: 690px;
+    min-height: 480px;
+    background: Theme.bg;
+    default-font-family: Theme.font;
+    default-font-size: Theme.font-size;
+
+    HorizontalLayout {
+        Sidebar { }
+        Rectangle {
+            horizontal-stretch: 1;
+            Text {
+                text: Nav.page;
+                color: Theme.muted;
+            }
+        }
+    }
+}

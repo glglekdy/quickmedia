@@ -7,6 +7,7 @@ pub mod options;
 pub mod queue;
 pub mod site;
 pub mod store;
+pub mod ui;
 pub mod updater;
 pub mod ytdlp;
 pub mod ytdlp_update;

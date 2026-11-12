@@ -1,0 +1,119 @@
+// 메인 창 왼쪽 메뉴. 다운로드 / 설정(누르면 아래로 펼쳐지는 로그인·네트워크·파일·고급) / 맨 아래 업데이트.
+// 무엇을 누르면 어느 화면이 되는지는 Rust(src/ui/nav.rs)가 정한다.
+import { Theme } from "theme.slint";
+
+export global Nav {
+    in-out property <string> page: "download";
+    in-out property <bool> settings-open: false;
+    in property <bool> update-dot: false;
+    in property <string> version: "버전";
+    callback go(string);
+}
+
+component NavItem inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> has-icon: false;
+    in property <bool> checked: false;
+    in property <bool> dot: false;
+    in property <bool> chevron: false;
+    in property <bool> chevron-open: false;
+    callback clicked();
+
+    height: 34px;
+    border-radius: 6px;
+    background: checked ? Theme.btn-bg : touch.has-hover ? Theme.nav-hover : transparent;
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    if checked: Rectangle {
+        x: 0; y: 9px; width: 3px; height: parent.height - 18px;
+        border-radius: 1.5px;
+        background: Theme.accent;
+    }
+    if has-icon: Image {
+        x: 12px; y: (parent.height - 16px) / 2; width: 16px; height: 16px;
+        source: icon;
+    }
+    Text {
+        x: 38px; width: parent.width - 38px - 24px; height: parent.height;
+        text: root.text;
+        color: Theme.text;
+        font-size: 13px;
+        font-weight: checked ? 600 : 500;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    if dot: Rectangle {
+        x: parent.width - 16px - 3.5px; y: parent.height / 2 - 3.5px; width: 7px; height: 7px;
+        border-radius: 3.5px;
+        background: Theme.accent;
+    }
+    if chevron: Image {
+        x: parent.width - 18px - 5px; y: (parent.height - 10px) / 2; width: 10px; height: 10px;
+        source: chevron-open ? @image-url("../assets/arrow-down.svg") : @image-url("../assets/chevron-right.svg");
+    }
+}
+
+export component Sidebar inherits Rectangle {
+    width: 168px;
+    background: Theme.surface;
+
+    property <length> children-height: 2px + 4 * 34px + 3 * 2px;
+
+    Rectangle {
+        x: parent.width - 1px; width: 1px;
+        background: Theme.border;
+    }
+    VerticalLayout {
+        padding-left: 8px; padding-right: 9px; padding-top: 12px; padding-bottom: 12px;
+        spacing: 2px;
+
+        NavItem {
+            text: "다운로드";
+            icon: @image-url("../assets/download.svg"); has-icon: true;
+            checked: Nav.page == "download";
+            clicked => { Nav.go("download"); }
+        }
+        NavItem {
+            text: "설정";
+            icon: @image-url("../assets/gear.svg"); has-icon: true;
+            chevron: true; chevron-open: Nav.settings-open;
+            checked: !Nav.settings-open && (Nav.page == "login" || Nav.page == "network" || Nav.page == "file" || Nav.page == "advanced");
+            clicked => { Nav.go("settings"); }
+        }
+        Rectangle {
+            height: Nav.settings-open ? children-height : 0px;
+            clip: true;
+            animate height { duration: 200ms; easing: ease-out; }
+            VerticalLayout {
+                y: 0; height: children-height;
+                padding-top: 2px;
+                spacing: 2px;
+                NavItem { text: "로그인"; checked: Nav.page == "login"; clicked => { Nav.go("login"); } }
+                NavItem { text: "네트워크"; checked: Nav.page == "network"; clicked => { Nav.go("network"); } }
+                NavItem { text: "파일"; checked: Nav.page == "file"; clicked => { Nav.go("file"); } }
+                NavItem { text: "고급"; checked: Nav.page == "advanced"; clicked => { Nav.go("advanced"); } }
+            }
+        }
+        Rectangle { vertical-stretch: 1; }
+        NavItem {
+            text: "업데이트";
+            icon: @image-url("../assets/update.svg"); has-icon: true;
+            dot: Nav.update-dot;
+            checked: Nav.page == "update";
+            clicked => { Nav.go("update"); }
+        }
+        Rectangle { height: 4px; }
+        HorizontalLayout {
+            padding-left: 12px;
+            Text {
+                text: Nav.version;
+                color: Theme.muted;
+                font-size: 11px;
+            }
+        }
+    }
+}
