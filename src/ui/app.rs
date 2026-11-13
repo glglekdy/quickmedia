@@ -332,7 +332,7 @@ impl App {
         // 카드가 늘거나 줄었으면 통째로 다시 채우고, 아니면 바뀐 줄만 고친다.
         if changes.iter().any(|c| !matches!(c, Change::Update(_))) {
             // 이번에 새로 들어온 카드만 떠오르는 움직임을 준다
-            let fresh = |i: usize| changes.iter().any(|c| *c == Change::Insert(i));
+            let fresh = |i: usize| changes.contains(&Change::Insert(i));
             self.cards.set_vec(cards.iter().enumerate().map(|(i, c)| self.view(c, fresh(i))).collect::<Vec<_>>());
             return;
         }
