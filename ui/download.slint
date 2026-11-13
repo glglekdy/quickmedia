@@ -12,7 +12,11 @@ component Card inherits Rectangle {
     border-width: 1px;
     border-color: Theme.border;
     border-radius: 10px;
-    height: layout.min-height;
+    // 목록에서 빠질 때는 접히며 흐려진다
+    property <float> stay: self.card.leaving ? 0 : 1;
+    animate stay { duration: 220ms; easing: ease-out; }
+    height: layout.min-height * self.stay;
+    clip: true;
 
     // 새 카드는 날아온 동그라미가 자리를 잡을 즈음부터 서서히 보인다
     property <bool> entering;
@@ -23,7 +27,7 @@ component Card inherits Rectangle {
             self.entering = true;
         }
     }
-    opacity: self.entering ? clamp((animation-tick() - self.born - 300ms) / 240ms, 0, 1) : 1;
+    opacity: self.stay * (self.entering ? clamp((animation-tick() - self.born - 300ms) / 240ms, 0, 1) : 1);
     Timer {
         interval: 560ms;
         running: root.entering;
@@ -31,6 +35,8 @@ component Card inherits Rectangle {
     }
 
     layout := VerticalLayout {
+        y: 0;
+        height: self.min-height;
         padding-left: 14px; padding-right: 14px; padding-top: 10px; padding-bottom: 12px;
         spacing: 6px;
 

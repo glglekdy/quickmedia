@@ -13,6 +13,43 @@ export global Nav {
     callback go(string);
 }
 
+// 작은 숫자 동그라미. 생길 때 살짝 커졌다가 제 크기로 돌아온다.
+component Count inherits Rectangle {
+    in property <int> value;
+    in property <color> tint;
+    property <bool> popping;
+    property <duration> born;
+    property <float> raw: self.popping ? clamp((animation-tick() - self.born) / 320ms, 0, 1) : 1;
+    // 끝에서 넘쳤다 돌아오는 곡선(back-out)
+    property <float> pop: 1 + 2.70158 * pow(self.raw - 1, 3) + 1.70158 * pow(self.raw - 1, 2);
+    init => {
+        self.born = animation-tick();
+        self.popping = true;
+    }
+    Timer {
+        interval: 340ms;
+        running: root.popping;
+        triggered => { root.popping = false; }
+    }
+    width: 18px; height: 18px;
+    Rectangle {
+        x: (18px - self.width) / 2; y: (18px - self.height) / 2;
+        width: 18px * root.pop; height: 18px * root.pop;
+        border-radius: self.width / 2;
+        background: root.tint;
+    }
+    Text {
+        width: 18px; height: 18px;
+        text: root.value > 99 ? "99" : root.value;
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        opacity: clamp(root.raw * 2, 0, 1);
+    }
+}
+
 component DockItem inherits Rectangle {
     in property <string> text;
     in property <image> icon;
@@ -59,31 +96,15 @@ component DockItem inherits Rectangle {
         border-radius: 3.5px;
         background: Theme.accent;
     }
-    if root.active > 0: Rectangle {
-        x: root.base - 8px; y: 9px; width: 18px; height: 18px;
-        border-radius: 9px;
-        background: Theme.accent;
-        Text {
-            text: root.active > 99 ? "99" : root.active;
-            color: white;
-            font-size: 10px;
-            font-weight: 700;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
+    if root.active > 0: Count {
+        x: root.base - 8px; y: 9px;
+        value: root.active;
+        tint: Theme.accent;
     }
-    if root.done > 0: Rectangle {
-        x: root.base - 8px + root.first; y: 9px; width: 18px; height: 18px;
-        border-radius: 9px;
-        background: Theme.success;
-        Text {
-            text: root.done > 99 ? "99" : root.done;
-            color: white;
-            font-size: 10px;
-            font-weight: 700;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
+    if root.done > 0: Count {
+        x: root.base - 8px + root.first; y: 9px;
+        value: root.done;
+        tint: Theme.success;
     }
 }
 

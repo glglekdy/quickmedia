@@ -86,6 +86,19 @@ export component AppWindow inherits Window {
         triggered => { root.moving = false; }
     }
 
+    // 링크 칸 위의 알림 바와 오류 알약: 올라오며 나타나고 내려가며 사라진다.
+    // 사라지는 동안에도 글이 남아 있게 마지막 오류를 기억해 둔다.
+    property <bool> popups-open: Download.panel-open || composer.preset-open;
+    property <float> tool-rise: Download.tool-shown && !root.popups-open ? 1 : 0;
+    animate tool-rise { duration: 320ms; easing: cubic-bezier(0.34, 1.36, 0.64, 1); }
+    property <string> error: Download.error;
+    property <string> error-text;
+    changed error => {
+        if root.error != "" { root.error-text = root.error; }
+    }
+    property <float> error-rise: root.error != "" && !root.in-settings && !root.popups-open ? 1 : 0;
+    animate error-rise { duration: 320ms; easing: cubic-bezier(0.34, 1.36, 0.64, 1); }
+
     // 받기 버튼에서 날아가는 동그라미
     property <bool> flying;
     property <duration> fly-from;
@@ -150,9 +163,11 @@ export component AppWindow inherits Window {
         x: min(composer.x + composer.preset-x, parent.width - self.width - root.side);
         picked => { composer.preset-open = false; }
     }
-    if Download.error != "" && !root.in-settings && !Download.panel-open && !composer.preset-open: Rectangle {
+    Rectangle {
+        visible: root.error-rise > 0.01;
+        opacity: clamp(root.error-rise, 0, 1);
         x: composer.x + 20px;
-        y: composer.y - self.height - 8px;
+        y: composer.y - self.height - 8px + (1 - root.error-rise) * 16px;
         width: min(message.preferred-width + 24px, composer.width - 40px);
         height: 28px;
         border-radius: 14px;
@@ -161,18 +176,20 @@ export component AppWindow inherits Window {
         border-color: Theme.danger.transparentize(0.5);
         message := Text {
             x: 12px; width: parent.width - 24px; height: parent.height;
-            text: Download.error;
+            text: root.error-text;
             color: Theme.danger;
             font-size: 12px;
             vertical-alignment: center;
             overflow: elide;
         }
     }
-    if Download.tool-text != "" && !Download.panel-open && !composer.preset-open: ToolDock {
+    if Download.tool-text != "": ToolDock {
+        visible: root.tool-rise > 0.01;
+        opacity: clamp(root.tool-rise, 0, 1);
         // 설정 화면에서는 링크 칸이 동그랗게 줄어 있으니 그 폭을 따르지 않는다
         x: root.side;
         width: root.in-settings ? root.width - 2 * root.side : root.composer-wide;
-        y: composer.y - self.height - 12px;
+        y: composer.y - self.height - 12px + (1 - root.tool-rise) * 20px;
     }
 
     composer := Composer {

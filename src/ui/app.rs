@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use slint::{ComponentHandle, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, VecModel};
 
-use super::cards::{Card, CardState};
+use super::cards::{is_finished, Card, CardState};
 use super::download::{AddError, Change, Controller};
 use super::ffmpeg::banner;
 use super::presets::{self, UserPreset};
@@ -38,6 +38,8 @@ pub struct App {
     pub form: RefCell<SettingsForm>,
     /// "✓ 저장했어요" 를 끄는 타이머.
     badge_timer: slint::Timer,
+    /// 접히는 움직임이 끝난 카드를 빼는 타이머.
+    remove_timer: slint::Timer,
     cards: Rc<VecModel<CardView>>,
     pub store: RefCell<Registry>,
     pub tools: Arc<Mutex<Tools>>,
@@ -292,6 +294,7 @@ impl App {
             show_bar: card.show_bar(),
             can_open: card.state == CardState::Done,
             fresh,
+            leaving: false,
         }
     }
 
@@ -343,6 +346,28 @@ impl App {
                 }
             }
         }
+    }
+
+    /// 끝난 카드를 접히며 흐려지게 하고, 다 접히면 목록에서 뺀다.
+    fn fade_out_finished(&self) {
+        {
+            let controller = self.controller.borrow();
+            for (index, card) in controller.cards().iter().enumerate() {
+                if !is_finished(card.state) {
+                    continue;
+                }
+                if let Some(mut row) = self.cards.row_data(index) {
+                    row.leaving = true;
+                    self.cards.set_row_data(index, row);
+                }
+            }
+        }
+        self.remove_timer.start(slint::TimerMode::SingleShot, std::time::Duration::from_millis(240), || {
+            with_app(|app| {
+                app.controller.borrow_mut().clear_finished();
+                app.sync();
+            })
+        });
     }
 
     /// 받고 있거나 기다리는 것이 있으면 바닥의 빛을 켠다.
@@ -684,13 +709,17 @@ impl App {
         self.show_glow();
         if let Some(window) = self.window() {
             let dl = window.global::<Download>();
-            dl.set_tool_text(view.text.into());
-            dl.set_tool_detail(view.detail.into());
-            dl.set_tool_percent(view.percent.into());
-            dl.set_tool_error(view.error);
-            dl.set_tool_show_bar(view.progress.is_some());
-            dl.set_tool_progress(view.progress.unwrap_or(0.0));
-            dl.set_tool_retry(view.retry);
+            // 사라질 때는 글을 그대로 둔 채 내려가게 한다
+            dl.set_tool_shown(!view.text.is_empty());
+            if !view.text.is_empty() {
+                dl.set_tool_text(view.text.into());
+                dl.set_tool_detail(view.detail.into());
+                dl.set_tool_percent(view.percent.into());
+                dl.set_tool_error(view.error);
+                dl.set_tool_show_bar(view.progress.is_some());
+                dl.set_tool_progress(view.progress.unwrap_or(0.0));
+                dl.set_tool_retry(view.retry);
+            }
         }
         if release {
             let held = std::mem::take(&mut *self.held.borrow_mut());
@@ -824,8 +853,7 @@ fn wire_download(window: &AppWindow) {
     });
     dl.on_clear_finished(|| {
         with_app(|app| {
-            app.controller.borrow_mut().clear_finished();
-            app.sync();
+            app.fade_out_finished();
         })
     });
     dl.on_reveal(|id| {
@@ -931,6 +959,7 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
         controller: RefCell::new(controller),
         form: RefCell::new(SettingsForm::new(settings.clone())),
         badge_timer: slint::Timer::default(),
+        remove_timer: slint::Timer::default(),
         cards,
         store: RefCell::new(store),
         tools,

@@ -31,6 +31,13 @@ export component OptionsPanel inherits VerticalLayout {
     property <int> tab: 0;
     property <bool> audio: Download.kind-audio;
     property <bool> custom-lang: Download.sub-lang == 3;
+    // 탭을 바꾼 직후 잠깐: 새 내용이 서서히 보인다
+    property <bool> switching;
+    property <duration> switched;
+    changed tab => {
+        self.switched = animation-tick();
+        self.switching = true;
+    }
 
     HorizontalLayout {
         alignment: start;
@@ -45,10 +52,16 @@ export component OptionsPanel inherits VerticalLayout {
         border-color: Theme.border;
         border-radius: 8px;
 
+        Timer {
+            interval: 220ms;
+            running: root.switching;
+            triggered => { root.switching = false; }
+        }
         VerticalLayout {
             padding: 12px;
             spacing: 8px;
             alignment: start;
+            opacity: root.switching ? clamp((animation-tick() - root.switched) / 200ms, 0, 1) : 1;
 
             // ---------- 형식 ----------
             if tab == 0: HorizontalLayout {

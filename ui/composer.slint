@@ -227,6 +227,7 @@ export component FloatCard inherits Rectangle {
     animate rise { duration: 300ms; easing: cubic-bezier(0.34, 1.36, 0.64, 1); }
 
     height: content-height + 24px;
+    animate height { duration: 240ms; easing: ease-out; }
     y: root.bottom - self.height + (1 - root.rise) * 22px;
     opacity: clamp(root.rise, 0, 1);
     visible: root.rise > 0.01;
@@ -244,10 +245,16 @@ export component FloatCard inherits Rectangle {
 
 export component OptionsCard inherits FloatCard {
     content-height: panel.min-height;
-    panel := OptionsPanel {
+    // 높이가 바뀌는 동안 내용이 판 밖으로 나가지 않게
+    Rectangle {
         x: 12px; y: 12px;
         width: parent.width - 24px;
         height: parent.height - 24px;
+        clip: true;
+        panel := OptionsPanel {
+            y: 0;
+            height: self.min-height;
+        }
     }
 }
 
