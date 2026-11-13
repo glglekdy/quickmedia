@@ -12,6 +12,7 @@ use slint::{ComponentHandle, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, VecM
 use super::cards::{Card, CardState};
 use super::download::{AddError, Change, Controller};
 use super::ffmpeg::banner;
+use super::presets::{self, UserPreset};
 use super::settings::{ExtraStep, SettingsForm, ERROR_KEYS};
 pub use super::ffmpeg::FfmpegState;
 pub use super::update::Phase;
@@ -47,6 +48,8 @@ pub struct App {
     /// 지금 쓰는 yt-dlp 의 버전. 아직 모르면 `None`.
     pub ytdlp_version: RefCell<Option<String>>,
     pub ffmpeg: RefCell<FfmpegState>,
+    /// 사용자가 저장한 프리셋.
+    presets: RefCell<Vec<UserPreset>>,
     /// ffmpeg 를 기다리느라 아직 시작하지 않은 작업.
     held: RefCell<Vec<(u32, JobSpec)>>,
     /// 호스트 → 아이콘. `None` 은 받는 중이거나 없는 곳.
@@ -220,6 +223,47 @@ impl App {
         let changed = changed_summary(opts);
         let text = if changed.is_empty() { "세부 옵션".to_string() } else { format!("세부 옵션 · {}", changed.join(", ")) };
         dl.set_more_text(text.into());
+        let list = self.presets.borrow();
+        let names: Vec<slint::SharedString> = list.iter().map(|p| p.name.as_str().into()).collect();
+        dl.set_user_presets(ModelRc::from(Rc::new(VecModel::from(names))));
+        dl.set_user_preset(presets::matching(&list, opts).map_or(-1, |i| i as i32));
+    }
+
+    fn store_presets(&self) {
+        let text = presets::to_json(&self.presets.borrow());
+        self.store.borrow_mut().set(presets::STORE_KEY, &text);
+        self.sync_format_row();
+    }
+
+    /// 지금 세부 옵션을 이름 칸의 이름으로 저장한다.
+    fn save_preset(&self) {
+        let Some(window) = self.window() else { return };
+        let dl = window.global::<Download>();
+        let opts = self.controller.borrow().options().clone();
+        let result = presets::save(&mut self.presets.borrow_mut(), &dl.get_preset_name(), &opts);
+        match result {
+            Ok(()) => {
+                dl.set_preset_name("".into());
+                dl.set_preset_error("".into());
+                self.store_presets();
+            }
+            Err(message) => dl.set_preset_error(message.into()),
+        }
+    }
+
+    fn apply_user_preset(&self, index: i32) {
+        let Some(window) = self.window() else { return };
+        let Some(opts) = self.presets.borrow().get(index.max(0) as usize).map(|p| p.opts.clone()) else { return };
+        show_options(&window.global::<Download>(), &opts);
+        self.options_changed(opts);
+    }
+
+    fn delete_user_preset(&self, index: i32) {
+        let index = index.max(0) as usize;
+        if index < self.presets.borrow().len() {
+            self.presets.borrow_mut().remove(index);
+            self.store_presets();
+        }
     }
 
     fn save_options(&self) {
@@ -785,6 +829,9 @@ fn wire_download(window: &AppWindow) {
     });
     dl.on_open_folder(|| with_app(|app| win::open_folder(app.controller.borrow().folder())));
     dl.on_retry_tool(|| with_app(|app| app.fetch_ffmpeg()));
+    dl.on_save_preset(|| with_app(|app| app.save_preset()));
+    dl.on_apply_user_preset(|index| with_app(|app| app.apply_user_preset(index)));
+    dl.on_delete_user_preset(|index| with_app(|app| app.delete_user_preset(index)));
 }
 
 fn wire_settings(window: &AppWindow) {
@@ -828,6 +875,7 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
     let folder = store.get("folder").filter(|f| !f.is_empty()).unwrap_or_else(|| downloads.to_string_lossy().into_owned());
     let opts = options_from_map(&read_group(&store, "options"), store.get("format").as_deref());
     let settings = settings_from_map(&read_group(&store, "settings"));
+    let user_presets = presets::parse(&store.get(presets::STORE_KEY).unwrap_or_default());
     let panel_open = store.get("ui/panel_open").is_some_and(|v| v.eq_ignore_ascii_case("true"));
 
     let data = data_dir();
@@ -870,6 +918,7 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
         // 알아보는 동안에는 "…" 로 보인다
         ytdlp_version: RefCell::new(Some("…".to_string())),
         ffmpeg: RefCell::new(FfmpegState::Looking),
+        presets: RefCell::new(user_presets),
         held: RefCell::default(),
         icon_cache: RefCell::default(),
     });

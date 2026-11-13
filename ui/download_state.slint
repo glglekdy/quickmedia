@@ -24,6 +24,11 @@ export global Download {
     in property <string> preset;
     // "세부 옵션 · 자막, 구간" 처럼 기본값과 달라진 항목을 붙인 글
     in property <string> more-text: "세부 옵션";
+    // 사용자가 저장한 프리셋의 이름들과, 지금 값과 같은 것의 자리(없으면 -1)
+    in property <[string]> user-presets;
+    in property <int> user-preset: -1;
+    in-out property <string> preset-name;
+    in property <string> preset-error;
     in property <bool> panel-open;
     in property <string> error;
     in property <[CardView]> cards;
@@ -75,4 +80,7 @@ export global Download {
     callback pick-folder();
     callback open-folder();
     callback retry-tool();
+    callback apply-user-preset(int);
+    callback delete-user-preset(int);
+    callback save-preset();
 }

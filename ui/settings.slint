@@ -3,6 +3,7 @@
 import { Theme } from "theme.slint";
 import { Btn, LineInput, Combo, Check, Radio, Spin, ScrollArea } from "widgets.slint";
 import { Settings } from "settings_state.slint";
+import { Download } from "download_state.slint";
 
 // 이름 | 입력 칸 + 안내 + 오류
 component Row inherits HorizontalLayout {
@@ -86,7 +87,7 @@ export component SettingsPage inherits Rectangle {
     property <string> title: page == "login" ? "로그인" : page == "network" ? "네트워크" : page == "file" ? "파일" : "고급";
     property <string> description: page == "login" ? "로그인해야 볼 수 있는 영상은 브라우저의 로그인 정보(쿠키)를 써서 받아요."
         : page == "network" ? "인터넷 연결과 받는 속도에 관한 설정이에요."
-        : page == "file" ? "받은 파일의 이름을 어떻게 지을지 정해요."
+        : page == "file" ? "받은 파일을 어디에 어떤 이름으로 둘지 정해요."
         : "yt-dlp 명령줄 옵션을 그대로 넣어요. 다른 설정보다 우선해요.";
 
     ScrollArea {
@@ -240,6 +241,19 @@ export component SettingsPage inherits Rectangle {
                     }
 
                     // ---------- 파일 ----------
+                    if page == "file": Row {
+                        label: "저장 위치";
+                        HorizontalLayout {
+                            spacing: 6px;
+                            LineInput {
+                                height: 30px;
+                                text: Download.folder;
+                                read-only: true;
+                            }
+                            Btn { text: "변경"; clicked => { Download.pick-folder(); } }
+                            Btn { text: "폴더 열기"; clicked => { Download.open-folder(); } }
+                        }
+                    }
                     if page == "file": Row {
                         label: "파일 이름";
                         HorizontalLayout {

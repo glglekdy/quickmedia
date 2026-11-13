@@ -36,19 +36,17 @@ export component AppWindow inherits Window {
                 page: Nav.page;
             }
             if Nav.page == "update": UpdatePage { }
-            // 바닥에 떠 있는 것들. 다운로드 화면에서는 저장 위치 줄 위에 얹힌다.
+            // 바닥에 떠 있는 것들
             Glow {
-                property <length> floor: Nav.page == "download" ? 58px : 0px;
                 x: 0;
-                y: parent.height - self.height - floor;
+                y: parent.height - self.height;
                 width: parent.width;
                 active: Download.glow;
             }
             if Download.tool-text != "": ToolDock {
-                property <length> floor: Nav.page == "download" ? 58px : 0px;
                 width: min(620px, parent.width - 56px);
                 x: (parent.width - self.width) / 2;
-                y: parent.height - self.height - floor - 16px;
+                y: parent.height - self.height - 16px;
             }
         }
     }

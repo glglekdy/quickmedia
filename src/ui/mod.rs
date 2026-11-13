@@ -5,6 +5,7 @@ pub mod cards;
 pub mod download;
 pub mod ffmpeg;
 pub mod nav;
+pub mod presets;
 pub mod settings;
 pub mod update;
 mod win;
