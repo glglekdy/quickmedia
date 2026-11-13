@@ -32,6 +32,8 @@ export global Theme {
     out property <color> success: dark ? #22c55e : #16a34a;
     out property <color> scroll-handle: dark ? #2c2c2c : #d4d4d4;
     out property <color> nav-hover: dark ? #232323 : #f0f0f0;
+    // 떠 있는 것들이 늘고 줄 때의 시간. 곡선은 끝에서 살짝 넘쳤다 돌아온다(각 animate 에 적는다).
+    out property <duration> spring: 460ms;
     out property <length> font-size: 13px;
     out property <string> font: "LINE Seed Sans KR";
 }

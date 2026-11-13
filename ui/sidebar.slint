@@ -1,4 +1,4 @@
-// 화면 전환: 아래에 떠 있는 독(다운로드 / 설정)과 설정 화면 위의 탭.
+// 화면 전환: 아래에 떠 있는 독. 설정 화면에서는 독이 펼쳐져 탭을 담는다.
 // 무엇을 누르면 어느 화면이 되는지는 Rust(src/ui/nav.rs)가 정한다.
 import { Theme } from "theme.slint";
 import { Shade } from "widgets.slint";
@@ -50,42 +50,6 @@ component DockItem inherits Rectangle {
     }
 }
 
-// 아래 오른쪽에 떠 있는 독: 다운로드 목록 / 설정
-export component NavDock inherits Rectangle {
-    in property <bool> labeled: true;
-    property <bool> in-settings: Nav.page != "download";
-
-    height: 52px;
-    width: row.min-width;
-
-    Shade { radius: 26px; }
-    Rectangle {
-        border-radius: 26px;
-        background: Theme.card-bg;
-        border-width: 1px;
-        border-color: Theme.border;
-    }
-    row := HorizontalLayout {
-        padding: 8px;
-        spacing: 4px;
-        DockItem {
-            text: "다운로드";
-            icon: @image-url("../assets/download.svg");
-            labeled: root.labeled;
-            checked: !root.in-settings;
-            clicked => { Nav.go("download"); }
-        }
-        DockItem {
-            text: "설정";
-            icon: @image-url("../assets/gear.svg");
-            labeled: root.labeled;
-            checked: root.in-settings;
-            dot: Nav.update-dot;
-            clicked => { Nav.go("settings"); }
-        }
-    }
-}
-
 component TabItem inherits Rectangle {
     in property <string> text;
     in property <bool> checked;
@@ -117,23 +81,68 @@ component TabItem inherits Rectangle {
     }
 }
 
-// 설정 화면 위의 탭 줄
-export component SettingsTabs inherits Rectangle {
-    height: 54px;
-    HorizontalLayout {
-        padding-left: 24px; padding-right: 28px; padding-top: 16px; padding-bottom: 8px;
-        spacing: 2px;
-        TabItem { text: "로그인"; checked: Nav.page == "login"; clicked => { Nav.go("login"); } }
-        TabItem { text: "네트워크"; checked: Nav.page == "network"; clicked => { Nav.go("network"); } }
-        TabItem { text: "파일"; checked: Nav.page == "file"; clicked => { Nav.go("file"); } }
-        TabItem { text: "고급"; checked: Nav.page == "advanced"; clicked => { Nav.go("advanced"); } }
-        TabItem { text: "업데이트"; checked: Nav.page == "update"; dot: Nav.update-dot; clicked => { Nav.go("update"); } }
-        Rectangle { horizontal-stretch: 1; }
-        Text {
-            text: Nav.version;
-            color: Theme.muted;
-            font-size: 11px;
-            vertical-alignment: center;
+// 아래에 떠 있는 독. 다운로드 화면에서는 [다운로드][설정] 두 개로 작게,
+// 설정 화면에서는 길게 펼쳐져 [다운로드] 옆에 설정 탭들을 담는다.
+export component NavDock inherits Rectangle {
+    in property <bool> labeled: true;
+    // 작게 접혔을 때의 폭
+    out property <length> small-width: 8px + home.width + 4px + gear.width + 8px;
+    property <bool> in-settings: Nav.page != "download";
+    property <float> reveal: root.in-settings ? 1 : 0;
+    animate reveal { duration: 220ms; easing: ease-out; }
+
+    height: 52px;
+
+    Shade { radius: 26px; }
+    Rectangle {
+        border-radius: 26px;
+        background: Theme.card-bg;
+        border-width: 1px;
+        border-color: Theme.border;
+        clip: true;
+
+        home := DockItem {
+            x: 8px; y: 8px;
+            text: "다운로드";
+            icon: @image-url("../assets/download.svg");
+            labeled: root.labeled;
+            checked: !root.in-settings;
+            clicked => { Nav.go("download"); }
+        }
+        gear := DockItem {
+            x: 8px + home.width + 4px; y: 8px;
+            text: "설정";
+            icon: @image-url("../assets/gear.svg");
+            labeled: root.labeled;
+            dot: Nav.update-dot;
+            opacity: 1 - root.reveal;
+            visible: root.reveal < 1;
+            clicked => { Nav.go("settings"); }
+        }
+        HorizontalLayout {
+            x: 8px + home.width + 10px; y: 11px;
+            width: parent.width - self.x - 18px;
+            height: 30px;
+            spacing: 2px;
+            opacity: root.reveal;
+            visible: root.reveal > 0;
+            Rectangle {
+                width: 9px;
+                Rectangle { x: 0; y: 7px; width: 1px; height: 16px; background: Theme.border; }
+            }
+            TabItem { text: "로그인"; checked: Nav.page == "login"; clicked => { Nav.go("login"); } }
+            TabItem { text: "네트워크"; checked: Nav.page == "network"; clicked => { Nav.go("network"); } }
+            TabItem { text: "파일"; checked: Nav.page == "file"; clicked => { Nav.go("file"); } }
+            TabItem { text: "고급"; checked: Nav.page == "advanced"; clicked => { Nav.go("advanced"); } }
+            TabItem { text: "업데이트"; checked: Nav.page == "update"; dot: Nav.update-dot; clicked => { Nav.go("update"); } }
+            Rectangle { horizontal-stretch: 1; }
+            Text {
+                text: Nav.version;
+                color: Theme.muted;
+                font-size: 11px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
         }
     }
 }

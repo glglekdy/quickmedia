@@ -1,7 +1,7 @@
 // 메인 창: 화면(다운로드 목록 · 설정 탭들) 위로, 아래에 링크 칸과 독이 떠 있다.
 import { Theme } from "theme.slint";
 import { Ui } from "widgets.slint";
-import { NavDock, SettingsTabs, Nav } from "sidebar.slint";
+import { NavDock, Nav } from "sidebar.slint";
 import { Download, CardView } from "download_state.slint";
 import { DownloadPage } from "download.slint";
 import { Settings } from "settings_state.slint";
@@ -33,6 +33,12 @@ export component AppWindow inherits Window {
     // 아래에 떠 있는 것들이 차지하는 높이. 설정 화면은 이만큼 위에서 끝난다.
     property <length> floor: 84px;
     property <length> side: 28px;
+    // 0: 다운로드 화면(링크 칸이 넓다) → 1: 설정 화면(링크 칸이 동그랗게 줄고 독이 펼쳐진다).
+    // 끝에서 살짝 넘쳤다 돌아와 쫀득하게 움직인다. 둘의 폭을 같은 값으로 정해 사이 틈은 늘 같다.
+    property <float> shift: root.in-settings ? 1 : 0;
+    animate shift { duration: Theme.spring; easing: cubic-bezier(0.34, 1.36, 0.64, 1); }
+    property <length> strip: root.width - 2 * root.side - 10px;
+    property <length> composer-wide: root.strip - dock.small-width;
 
     // 빈 곳을 누르면 링크 칸을 접는다
     TouchArea {
@@ -46,7 +52,6 @@ export component AppWindow inherits Window {
     if root.in-settings: VerticalLayout {
         height: parent.height - root.floor;
         y: 0;
-        SettingsTabs { }
         if Nav.page != "update": SettingsPage {
             page: Nav.page;
         }
@@ -98,11 +103,17 @@ export component AppWindow inherits Window {
     composer := Composer {
         x: root.side;
         y: parent.height - self.height - 16px;
-        width: parent.width - 2 * root.side - dock.width - 10px;
+        width: root.composer-wide + (52px - root.composer-wide) * root.shift;
+        compact: root.in-settings;
+        expand => {
+            Nav.go("download");
+            self.focus-url();
+        }
     }
     dock := NavDock {
         x: parent.width - self.width - root.side;
         y: parent.height - self.height - 16px;
+        width: root.strip - composer.width;
         labeled: root.width >= 820px;
     }
 }
