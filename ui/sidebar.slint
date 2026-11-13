@@ -6,6 +6,9 @@ import { Shade } from "widgets.slint";
 export global Nav {
     in-out property <string> page: "download";
     in property <bool> update-dot: false;
+    // 받고 있거나 기다리는 영상 수, 다 받은 영상 수. 설정 화면에서 독의 '다운로드'에 작게 보인다.
+    in property <int> active-count;
+    in property <int> done-count;
     in property <string> version: "버전";
     callback go(string);
 }
@@ -17,10 +20,18 @@ component DockItem inherits Rectangle {
     in property <bool> dot;
     // 창이 좁으면 그림만 보인다
     in property <bool> labeled: true;
+    // 0 보다 크면 오른쪽에 작은 동그라미로 보인다: 받는 중(빨강), 다 받음(초록)
+    in property <int> active;
+    in property <int> done;
     callback clicked();
 
+    property <length> base: labeled ? 34px + label.preferred-width + 14px : 44px;
+    property <length> first: root.active > 0 ? 22px : 0px;
+    property <length> second: root.done > 0 ? 22px : 0px;
+
     height: 36px;
-    width: labeled ? 34px + label.preferred-width + 14px : 44px;
+    width: base + first + second;
+    animate width { duration: 200ms; easing: ease-out; }
     border-radius: 18px;
     background: checked ? Theme.btn-hover : touch.has-hover ? Theme.nav-hover : transparent;
     animate background { duration: 120ms; }
@@ -47,6 +58,32 @@ component DockItem inherits Rectangle {
         x: parent.width - 11px; y: 6px; width: 7px; height: 7px;
         border-radius: 3.5px;
         background: Theme.accent;
+    }
+    if root.active > 0: Rectangle {
+        x: root.base - 8px; y: 9px; width: 18px; height: 18px;
+        border-radius: 9px;
+        background: Theme.accent;
+        Text {
+            text: root.active > 99 ? "99" : root.active;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    if root.done > 0: Rectangle {
+        x: root.base - 8px + root.first; y: 9px; width: 18px; height: 18px;
+        border-radius: 9px;
+        background: Theme.success;
+        Text {
+            text: root.done > 99 ? "99" : root.done;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
     }
 }
 
@@ -107,6 +144,9 @@ export component NavDock inherits Rectangle {
             icon: @image-url("../assets/download.svg");
             labeled: root.labeled;
             checked: !root.in-settings;
+            // 목록이 보이지 않는 설정 화면에서만 수를 보인다
+            active: root.in-settings ? Nav.active-count : 0;
+            done: root.in-settings ? Nav.done-count : 0;
             clicked => { Nav.go("download"); }
         }
         gear := DockItem {

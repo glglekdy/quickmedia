@@ -344,9 +344,17 @@ impl App {
 
     /// 받고 있거나 기다리는 것이 있으면 바닥의 빛을 켠다.
     fn show_glow(&self) {
-        let busy = self.controller.borrow().active_count() > 0 || matches!(*self.ffmpeg.borrow(), FfmpegState::Fetching(_));
+        let (active, done) = {
+            let controller = self.controller.borrow();
+            (controller.active_count(), controller.cards().iter().filter(|c| c.state == CardState::Done).count())
+        };
+        let busy = active > 0 || matches!(*self.ffmpeg.borrow(), FfmpegState::Fetching(_));
         if let Some(window) = self.window() {
             window.global::<Download>().set_glow(busy);
+            // 설정 화면에서 독의 '다운로드'에 작게 보이는 수
+            let nav_global = window.global::<Nav>();
+            nav_global.set_active_count(active as i32);
+            nav_global.set_done_count(done as i32);
         }
     }
 

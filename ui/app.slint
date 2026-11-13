@@ -76,7 +76,7 @@ export component AppWindow inherits Window {
         y: composer.y - self.height - 10px;
         picked => { composer.preset-open = false; }
     }
-    if Download.error != "" && !Download.panel-open && !composer.preset-open: Rectangle {
+    if Download.error != "" && !root.in-settings && !Download.panel-open && !composer.preset-open: Rectangle {
         x: composer.x + 20px;
         y: composer.y - self.height - 8px;
         width: min(message.preferred-width + 24px, composer.width - 40px);
@@ -95,8 +95,9 @@ export component AppWindow inherits Window {
         }
     }
     if Download.tool-text != "" && !Download.panel-open && !composer.preset-open: ToolDock {
-        x: composer.x;
-        width: composer.width;
+        // 설정 화면에서는 링크 칸이 동그랗게 줄어 있으니 그 폭을 따르지 않는다
+        x: root.side;
+        width: root.in-settings ? root.width - 2 * root.side : root.composer-wide;
         y: composer.y - self.height - 12px;
     }
 
