@@ -62,8 +62,8 @@ fn or<'a>(a: &'a str, b: &'a str) -> &'a str {
 
 /// 조회 결과(stdout 전체)를 읽는다. `archived` 는 받은 기록의 `"<추출기 소문자> <id>"` 를 받는다.
 pub fn parse_probe(stdout: &str, url: &str, archived: &dyn Fn(&str) -> bool) -> Result<Probe, String> {
-    let json = stdout.lines().rev().find(|l| l.trim_start().starts_with('{')).ok_or("영상 정보를 읽지 못했어요")?;
-    let info: Value = serde_json::from_str(json.trim()).map_err(|_| "영상 정보를 읽지 못했어요")?;
+    let json = stdout.lines().rev().find(|l| l.trim_start().starts_with('{')).ok_or("영상 정보 읽기 실패")?;
+    let info: Value = serde_json::from_str(json.trim()).map_err(|_| "영상 정보 읽기 실패")?;
     let site_key = text(&info, "extractor_key").to_string();
     let webpage_url = or(text(&info, "webpage_url"), url).to_string();
 
@@ -231,24 +231,24 @@ impl ProgressMeter {
 
 /// 위에서부터 맞춰 본다. 쿠키 실패 메시지에도 "Sign in" 이 섞일 수 있어 쿠키가 먼저다.
 const ERRORS: &[(&[&str], &str)] = &[
-    (&["unsupported url", "is not a valid url"], "지원하지 않는 링크예요"),
+    (&["unsupported url", "is not a valid url"], "지원하지 않는 링크"),
     (
         &["cookies database", "failed to decrypt", "cookie database"],
-        "브라우저 쿠키를 읽지 못했어요. 브라우저를 닫고 다시 시도하거나 cookies.txt 를 써 주세요",
+        "브라우저 쿠키 읽기 실패. 브라우저를 닫고 다시 시도하거나 cookies.txt를 사용하세요",
     ),
     (
         &["sign in", "login required", "private video", "members-only"],
-        "로그인이 필요한 영상이에요. ⚙ 설정에서 쿠키를 켜 보세요",
+        "로그인이 필요한 영상. 설정 → 로그인에서 쿠키를 켜세요",
     ),
     (
         &["video unavailable", "video is unavailable", "this video is not available"],
-        "삭제되었거나 볼 수 없는 영상이에요",
+        "삭제되었거나 볼 수 없는 영상",
     ),
-    (&["requested format is not available"], "고른 화질·형식이 없는 영상이에요. 세부 옵션을 바꿔 보세요"),
-    (&["getaddrinfo", "timed out", "unable to connect", "proxyerror"], "인터넷 연결이나 프록시 설정을 확인해 주세요"),
+    (&["requested format is not available"], "선택한 화질·형식 없음. 세부 옵션을 바꾸세요"),
+    (&["getaddrinfo", "timed out", "unable to connect", "proxyerror"], "인터넷 연결이나 프록시 설정을 확인하세요"),
 ];
 
-const UPDATE_HINT: &str = " · 업데이트 화면에서 yt-dlp 갱신을 눌러 보세요";
+const UPDATE_HINT: &str = " · 설정 → 업데이트에서 yt-dlp를 갱신하세요";
 
 /// yt-dlp 의 오류 출력을 화면에 보일 문구로.
 pub fn friendly_error(stderr: &str) -> String {
@@ -256,7 +256,7 @@ pub fn friendly_error(stderr: &str) -> String {
     let all = if errors.is_empty() { stderr.trim().to_string() } else { errors.join("\n") };
     let low = all.to_lowercase();
     if (low.contains("ffmpeg") || low.contains("ffprobe")) && (low.contains("not found") || low.contains("not installed")) {
-        return "변환 도구(ffmpeg)를 찾지 못했어요".to_string();
+        return "ffmpeg를 찾을 수 없음".to_string();
     }
     for (needles, message) in ERRORS {
         if needles.iter().any(|n| low.contains(n)) {
@@ -266,7 +266,7 @@ pub fn friendly_error(stderr: &str) -> String {
     let last = errors.last().copied().unwrap_or_else(|| all.lines().last().unwrap_or(""));
     let short: String = last.replace("ERROR: ", "").chars().take(160).collect();
     if short.trim().is_empty() {
-        return format!("알 수 없는 오류가 났어요{UPDATE_HINT}");
+        return format!("알 수 없는 오류{UPDATE_HINT}");
     }
     format!("{short}{UPDATE_HINT}")
 }
@@ -288,33 +288,33 @@ mod tests {
 
     #[test]
     fn friendly_error_table() {
-        let cookies = "브라우저 쿠키를 읽지 못했어요. 브라우저를 닫고 다시 시도하거나 cookies.txt 를 써 주세요";
-        let login = "로그인이 필요한 영상이에요. ⚙ 설정에서 쿠키를 켜 보세요";
-        let net = "인터넷 연결이나 프록시 설정을 확인해 주세요";
+        let cookies = "브라우저 쿠키 읽기 실패. 브라우저를 닫고 다시 시도하거나 cookies.txt를 사용하세요";
+        let login = "로그인이 필요한 영상. 설정 → 로그인에서 쿠키를 켜세요";
+        let net = "인터넷 연결이나 프록시 설정을 확인하세요";
         let cases = [
-            ("ERROR: Unsupported URL: https://x", "지원하지 않는 링크예요"),
+            ("ERROR: Unsupported URL: https://x", "지원하지 않는 링크"),
             ("ERROR: could not find chrome cookies database in ...", cookies),
             ("ERROR: Could not copy Chrome cookie database. See ...", cookies),
             ("ERROR: Failed to decrypt with DPAPI", cookies),
             ("ERROR: Sign in to confirm your age", login),
             ("ERROR: Join this channel to get access to members-only content", login),
-            ("ERROR: Video unavailable", "삭제되었거나 볼 수 없는 영상이에요"),
-            ("ERROR: [youtube] aaaaaaaaaaa: This video is unavailable", "삭제되었거나 볼 수 없는 영상이에요"),
-            ("ERROR: Requested format is not available", "고른 화질·형식이 없는 영상이에요. 세부 옵션을 바꿔 보세요"),
-            ("ERROR: Postprocessing: ffprobe and ffmpeg not found", "변환 도구(ffmpeg)를 찾지 못했어요"),
+            ("ERROR: Video unavailable", "삭제되었거나 볼 수 없는 영상"),
+            ("ERROR: [youtube] aaaaaaaaaaa: This video is unavailable", "삭제되었거나 볼 수 없는 영상"),
+            ("ERROR: Requested format is not available", "선택한 화질·형식 없음. 세부 옵션을 바꾸세요"),
+            ("ERROR: Postprocessing: ffprobe and ffmpeg not found", "ffmpeg를 찾을 수 없음"),
             ("ERROR: Unable to connect to proxy", net),
             ("ERROR: [Errno 11001] getaddrinfo failed", net),
         ];
         for (msg, expected) in cases {
             assert_eq!(friendly_error(msg), expected, "{msg}");
         }
-        assert_eq!(friendly_error(UNAVAILABLE), "삭제되었거나 볼 수 없는 영상이에요");
+        assert_eq!(friendly_error(UNAVAILABLE), "삭제되었거나 볼 수 없는 영상");
         assert!(!friendly_error("ERROR: 'x' is not a valid URL").contains("유튜브"));
     }
 
     #[test]
     fn unknown_error_is_shortened_and_points_to_ytdlp_update() {
-        assert_eq!(friendly_error("ERROR: something odd"), "something odd · 업데이트 화면에서 yt-dlp 갱신을 눌러 보세요");
+        assert_eq!(friendly_error("ERROR: something odd"), "something odd · 설정 → 업데이트에서 yt-dlp를 갱신하세요");
         // 여러 줄이면 마지막 ERROR 줄을 쓴다
         assert!(friendly_error("WARNING: x\nERROR: first\nERROR: last one\n").starts_with("last one · "));
         let long = format!("ERROR: {}", "가".repeat(400));

@@ -226,7 +226,7 @@ mod tests {
         let mut f = form();
         edit(&mut f, |v| v.rate_limit = "fast".into());
         assert!(!f.commit("rate_limit", &ok));
-        assert_eq!(f.error("rate_limit"), "속도 제한은 5M, 500K 처럼 써 주세요");
+        assert_eq!(f.error("rate_limit"), "속도 형식: 5M, 500K");
         assert_eq!(f.saved().rate_limit, "");
         edit(&mut f, |v| v.rate_limit = " 5M ".into());
         assert!(f.commit("rate_limit", &ok));
@@ -249,7 +249,7 @@ mod tests {
         let mut f = form();
         edit(&mut f, |v| v.cookies = "file".into());
         assert!(!f.commit("cookies", &ok));
-        assert_eq!(f.error("cookie_file"), "쿠키 파일을 찾을 수 없어요");
+        assert_eq!(f.error("cookie_file"), "쿠키 파일 없음");
         assert_eq!(f.saved().cookies, "none");
         // 화면에는 고른 그대로 남는다
         assert_eq!(f.view().cookies, "file");
@@ -274,7 +274,7 @@ mod tests {
         assert_eq!((f.saved().name_template.as_str(), f.saved().custom_template.as_str()), ("custom", "%(id)s.%(ext)s"));
         edit(&mut f, |v| v.custom_template = " ".into());
         assert!(!f.commit("template", &ok));
-        assert_eq!(f.error("custom_template"), "파일 이름 규칙을 입력해 주세요");
+        assert_eq!(f.error("custom_template"), "파일 이름 규칙을 입력하세요");
     }
 
     #[test]
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn extra_args_are_checked_before_saving() {
-        let bad = |text: &str| text.contains("--nope").then(|| "고급 옵션을 읽지 못했어요: no such option: --nope".to_string());
+        let bad = |text: &str| text.contains("--nope").then(|| "고급 옵션 오류: no such option: --nope".to_string());
         let mut f = form();
         edit(&mut f, |v| v.extra_args = " --nope ".into());
         assert!(!f.commit("extra_args", &bad));
@@ -363,8 +363,8 @@ mod tests {
         // 실패: 칸이 그 글 그대로일 때만 오류를 보인다
         let mut f = form();
         edit(&mut f, |v| v.extra_args = "--nope".into());
-        assert!(!f.apply_extra("--nope", Some("고급 옵션을 읽지 못했어요: x".into())));
-        assert_eq!((f.saved().extra_args.as_str(), f.error("extra_args")), ("", "고급 옵션을 읽지 못했어요: x"));
+        assert!(!f.apply_extra("--nope", Some("고급 옵션 오류: x".into())));
+        assert_eq!((f.saved().extra_args.as_str(), f.error("extra_args")), ("", "고급 옵션 오류: x"));
         edit(&mut f, |v| v.extra_args = "--other".into());
         f.clear_error("extra_args");
         assert!(!f.apply_extra("--nope", Some("늦게 온 오류".into())));

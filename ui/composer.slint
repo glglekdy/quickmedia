@@ -264,7 +264,7 @@ export component PresetCard inherits FloatCard {
         spacing: 2px;
         if Download.user-presets.length == 0: Text {
             height: 30px;
-            text: "저장한 프리셋이 없어요";
+            text: "저장된 프리셋 없음";
             color: Theme.muted;
             font-size: 12px;
             vertical-alignment: center;
@@ -309,7 +309,7 @@ export component PresetCard inherits FloatCard {
             Rectangle { y: 6px; height: 1px; background: Theme.border; }
         }
         Text {
-            text: "지금 세부 옵션을 프리셋으로 저장";
+            text: "현재 옵션을 프리셋으로 저장";
             color: Theme.muted;
             font-size: 12px;
             height: 22px;

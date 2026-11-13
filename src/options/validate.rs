@@ -85,23 +85,23 @@ pub fn playlist_items_ok(text: &str) -> bool {
 pub fn validate_options(o: &DownloadOptions) -> BTreeMap<&'static str, String> {
     let mut errors = BTreeMap::new();
     if o.kind == "video" && o.container == "webm" && o.codec == "h264" {
-        errors.insert("codec", "WEBM 에는 H.264 를 넣을 수 없어요. 코덱이나 파일 형식을 바꿔 주세요".to_string());
+        errors.insert("codec", "WEBM은 H.264를 지원하지 않음. 코덱이나 파일 형식을 바꾸세요".to_string());
     }
     if !o.section_start.is_empty() || !o.section_end.is_empty() {
         let start = if o.section_start.is_empty() { Some(0.0) } else { parse_duration(&o.section_start) };
         let end = if o.section_end.is_empty() { Some(f64::INFINITY) } else { parse_duration(&o.section_end) };
         match (start, end) {
             (Some(s), Some(e)) if s >= e => {
-                errors.insert("section", "끝이 시작보다 뒤여야 해요".to_string());
+                errors.insert("section", "끝 시간은 시작보다 뒤여야 함".to_string());
             }
             (Some(_), Some(_)) => {}
             _ => {
-                errors.insert("section", "시간은 1:30 처럼 써 주세요".to_string());
+                errors.insert("section", "시간 형식: 1:30".to_string());
             }
         }
     }
     if o.playlist == "all" && !o.playlist_items.is_empty() && !playlist_items_ok(&o.playlist_items.replace(' ', "")) {
-        errors.insert("playlist_items", "범위는 1-10, 15 처럼 써 주세요".to_string());
+        errors.insert("playlist_items", "범위 형식: 1-10, 15".to_string());
     }
     errors
 }
@@ -115,17 +115,17 @@ pub fn extra_has_url(text: &str) -> bool {
 pub fn validate_settings(s: &AppSettings, extra: ExtraCheck) -> BTreeMap<&'static str, String> {
     let mut errors = BTreeMap::new();
     if !s.rate_limit.is_empty() && parse_bytes(&s.rate_limit).is_none() {
-        errors.insert("rate_limit", "속도 제한은 5M, 500K 처럼 써 주세요".to_string());
+        errors.insert("rate_limit", "속도 형식: 5M, 500K".to_string());
     }
     if s.cookies == "file" && !Path::new(&s.cookie_file).is_file() {
-        errors.insert("cookie_file", "쿠키 파일을 찾을 수 없어요".to_string());
+        errors.insert("cookie_file", "쿠키 파일 없음".to_string());
     }
     if s.name_template == "custom" && s.custom_template.trim().is_empty() {
-        errors.insert("custom_template", "파일 이름 규칙을 입력해 주세요".to_string());
+        errors.insert("custom_template", "파일 이름 규칙을 입력하세요".to_string());
     }
     if !s.extra_args.trim().is_empty() {
         if extra_has_url(&s.extra_args) {
-            errors.insert("extra_args", "고급 옵션에는 링크를 넣을 수 없어요".to_string());
+            errors.insert("extra_args", "고급 옵션에 링크는 넣을 수 없음".to_string());
         } else if let Some(msg) = extra(&s.extra_args) {
             errors.insert("extra_args", msg);
         }
@@ -180,7 +180,7 @@ mod tests {
 
     /// yt-dlp 를 부르지 않는 가짜 검사: `--nope` 가 들어 있으면 오류.
     fn fake(text: &str) -> Option<String> {
-        text.contains("--nope").then(|| "고급 옵션을 읽지 못했어요: no such option: --nope".to_string())
+        text.contains("--nope").then(|| "고급 옵션 오류: no such option: --nope".to_string())
     }
 
     fn vs(s: &AppSettings) -> BTreeMap<&'static str, String> {
@@ -226,11 +226,11 @@ mod tests {
     #[test]
     fn sections() {
         assert!(validate_options(&opts(|o| { o.section_start = "1:30".into(); o.section_end = "3:00".into() })).is_empty());
-        assert_eq!(validate_options(&opts(|o| o.section_start = "abc".into()))["section"], "시간은 1:30 처럼 써 주세요");
+        assert_eq!(validate_options(&opts(|o| o.section_start = "abc".into()))["section"], "시간 형식: 1:30");
         assert_eq!(validate_options(&opts(|o| { o.section_start = "3:00".into(); o.section_end = "1:00".into() }))["section"],
-                   "끝이 시작보다 뒤여야 해요");
+                   "끝 시간은 시작보다 뒤여야 함");
         assert_eq!(validate_options(&opts(|o| { o.section_start = "1:00".into(); o.section_end = "1:00".into() }))["section"],
-                   "끝이 시작보다 뒤여야 해요");
+                   "끝 시간은 시작보다 뒤여야 함");
         assert!(validate_options(&opts(|o| o.section_end = "0:10".into())).is_empty());
     }
 
@@ -239,13 +239,13 @@ mod tests {
         assert!(validate_options(&opts(|o| { o.playlist = "single".into(); o.playlist_items = "x".into() })).is_empty());
         assert!(validate_options(&opts(|o| { o.playlist = "all".into(); o.playlist_items = "1-10, 15".into() })).is_empty());
         assert_eq!(validate_options(&opts(|o| { o.playlist = "all".into(); o.playlist_items = "x".into() }))["playlist_items"],
-                   "범위는 1-10, 15 처럼 써 주세요");
+                   "범위 형식: 1-10, 15");
     }
 
     #[test]
     fn rate_limit() {
         assert!(vs(&set(|s| s.rate_limit = "500K".into())).is_empty());
-        assert_eq!(vs(&set(|s| s.rate_limit = "fast".into()))["rate_limit"], "속도 제한은 5M, 500K 처럼 써 주세요");
+        assert_eq!(vs(&set(|s| s.rate_limit = "fast".into()))["rate_limit"], "속도 형식: 5M, 500K");
     }
 
     #[test]
@@ -255,7 +255,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("qm-validate-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let missing = dir.join("no.txt").to_string_lossy().to_string();
-        assert_eq!(vs(&set(|s| { s.cookies = "file".into(); s.cookie_file = missing }))["cookie_file"], "쿠키 파일을 찾을 수 없어요");
+        assert_eq!(vs(&set(|s| { s.cookies = "file".into(); s.cookie_file = missing }))["cookie_file"], "쿠키 파일 없음");
         let file = dir.join("c.txt");
         std::fs::write(&file, "x").unwrap();
         assert!(vs(&set(|s| { s.cookies = "file".into(); s.cookie_file = file.to_string_lossy().to_string() })).is_empty());
@@ -267,15 +267,15 @@ mod tests {
     #[test]
     fn custom_template() {
         assert_eq!(vs(&set(|s| { s.name_template = "custom".into(); s.custom_template = " ".into() }))["custom_template"],
-                   "파일 이름 규칙을 입력해 주세요");
+                   "파일 이름 규칙을 입력하세요");
     }
 
     #[test]
     fn extra_args() {
         assert!(vs(&set(|s| s.extra_args = "--limit-rate 1M --no-mtime".into())).is_empty());
         let errors = vs(&set(|s| s.extra_args = "--nope".into()));
-        assert!(errors["extra_args"].starts_with("고급 옵션을 읽지 못했어요: ") && errors["extra_args"].contains("--nope"));
-        assert_eq!(vs(&set(|s| s.extra_args = "https://x.com/v".into()))["extra_args"], "고급 옵션에는 링크를 넣을 수 없어요");
+        assert!(errors["extra_args"].starts_with("고급 옵션 오류: ") && errors["extra_args"].contains("--nope"));
+        assert_eq!(vs(&set(|s| s.extra_args = "https://x.com/v".into()))["extra_args"], "고급 옵션에 링크는 넣을 수 없음");
         assert!(vs(&set(|s| s.extra_args = "   ".into())).is_empty());
     }
 
@@ -287,7 +287,7 @@ mod tests {
             None
         };
         let errors = validate_settings(&set(|s| s.extra_args = "--no-mtime \"https://x.com/v\"".into()), &check);
-        assert_eq!(errors["extra_args"], "고급 옵션에는 링크를 넣을 수 없어요");
+        assert_eq!(errors["extra_args"], "고급 옵션에 링크는 넣을 수 없음");
         assert!(!called.get());
         assert!(extra_has_url("-o x http://a/b") && !extra_has_url("--proxy socks5:host"));
     }
@@ -296,7 +296,7 @@ mod tests {
     fn webm_cannot_hold_h264() {
         // yt-dlp 가 H.264 를 골라 WEBM 으로 합치려다 알 수 없는 오류로 실패한다
         assert_eq!(validate_options(&opts(|o| { o.container = "webm".into(); o.codec = "h264".into() }))["codec"],
-                   "WEBM 에는 H.264 를 넣을 수 없어요. 코덱이나 파일 형식을 바꿔 주세요");
+                   "WEBM은 H.264를 지원하지 않음. 코덱이나 파일 형식을 바꾸세요");
         assert!(validate_options(&opts(|o| { o.container = "webm".into(); o.codec = "h264".into(); o.kind = "audio".into() })).is_empty());
         assert!(validate_options(&opts(|o| { o.container = "mkv".into(); o.codec = "h264".into() })).is_empty());
     }
@@ -315,7 +315,7 @@ mod tests {
         let (new, errors) = update_settings(&s, set(|c| c.rate_limit = "fast".into()), &["rate_limit"], &fake);
         assert_eq!(new, s);
         assert_eq!(errors.len(), 1);
-        assert_eq!(errors["rate_limit"], "속도 제한은 5M, 500K 처럼 써 주세요");
+        assert_eq!(errors["rate_limit"], "속도 형식: 5M, 500K");
     }
 
     #[test]
@@ -335,7 +335,7 @@ mod tests {
         let cand = set(|c| { c.cookies = "file".into(); c.cookie_file = "없는.txt".into() });
         let (new, errors) = update_settings(&s, cand, &["cookies", "cookie_file"], &fake);
         assert_eq!(new, s);
-        assert_eq!(errors["cookie_file"], "쿠키 파일을 찾을 수 없어요");
+        assert_eq!(errors["cookie_file"], "쿠키 파일 없음");
         let s = set(|s| s.cookie_file = "없는.txt".into());
         let mut cand = s.clone();
         cand.cookies = "browser".into();
@@ -350,7 +350,7 @@ mod tests {
         let cand = set(|c| { c.name_template = "custom".into(); c.custom_template = " ".into() });
         let (new, errors) = update_settings(&s, cand, &["name_template", "custom_template"], &fake);
         assert_eq!(new, s);
-        assert_eq!(errors["custom_template"], "파일 이름 규칙을 입력해 주세요");
+        assert_eq!(errors["custom_template"], "파일 이름 규칙을 입력하세요");
     }
 
     #[test]

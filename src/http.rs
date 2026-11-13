@@ -89,7 +89,7 @@ fn download_inner(agent: &ureq::Agent, url: &str, part: &Path, progress: &dyn Fn
         progress(done, total);
     }
     if total > 0 && done != total {
-        return Err(HttpError::Network("받다가 끊겼어요".into()));
+        return Err(HttpError::Network("다운로드 중단".into()));
     }
     let sha: String = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect();
     Ok((done, sha))

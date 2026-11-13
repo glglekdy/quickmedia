@@ -61,7 +61,7 @@ pub fn locate(own: &[PathBuf], path: Option<&OsStr>, group: &KillGroup) -> Optio
 
 /// 압축 파일에서 `ffmpeg.exe` 만 꺼내 `target` 에 쓴다. 묶음 안 어느 폴더에 있든 찾는다.
 pub fn extract(zip_path: &Path, target: &Path) -> Result<(), String> {
-    let broken = || "받은 변환 도구 파일을 풀지 못했어요. 다시 시도해 주세요.".to_string();
+    let broken = || "ffmpeg 압축 해제 실패. 다시 시도하세요.".to_string();
     let file = std::fs::File::open(zip_path).map_err(|_| broken())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|_| broken())?;
     let is_ffmpeg = |name: &str| name.rsplit(['/', '\\']).next().is_some_and(|leaf| leaf.eq_ignore_ascii_case(EXE));
@@ -72,7 +72,7 @@ pub fn extract(zip_path: &Path, target: &Path) -> Result<(), String> {
     let written = std::fs::File::create(target).and_then(|mut out| std::io::copy(&mut entry, &mut out));
     if written.is_err() {
         let _ = std::fs::remove_file(target);
-        return Err("변환 도구를 저장하지 못했어요. 디스크 공간을 확인해 주세요.".to_string());
+        return Err("ffmpeg 저장 실패. 디스크 공간을 확인하세요.".to_string());
     }
     Ok(())
 }
@@ -96,7 +96,7 @@ pub fn fetch_source() -> Release {
 /// 받아서 `bin_dir\ffmpeg.exe` 로 둔다. 돌려주는 값은 그 폴더.
 pub fn install(source: &Release, bin_dir: &Path, group: &KillGroup, progress: &dyn Fn(u64, u64)) -> Result<PathBuf, String> {
     let zip_path = bin_dir.join("ffmpeg.zip");
-    updater::download_to(source, &zip_path, progress).map_err(|message| message.replace("업데이트 파일", "변환 도구"))?;
+    updater::download_to(source, &zip_path, progress).map_err(|message| message.replace("업데이트 파일", "ffmpeg"))?;
     let part = bin_dir.join("ffmpeg.exe.part");
     let extracted = extract(&zip_path, &part);
     let _ = std::fs::remove_file(&zip_path);
@@ -104,13 +104,13 @@ pub fn install(source: &Release, bin_dir: &Path, group: &KillGroup, progress: &d
     // 받은 파일이 실제로 도는지 본 뒤에야 쓴다
     if !works(&part, group) {
         let _ = std::fs::remove_file(&part);
-        return Err("받은 변환 도구가 실행되지 않아요. 다시 시도해 주세요.".to_string());
+        return Err("ffmpeg 실행 확인 실패. 다시 시도하세요.".to_string());
     }
     let target = bin_dir.join(EXE);
     let _ = std::fs::remove_file(&target);
     std::fs::rename(&part, &target).map_err(|_| {
         let _ = std::fs::remove_file(&part);
-        "변환 도구를 저장하지 못했어요. 다시 시도해 주세요.".to_string()
+        "ffmpeg 저장 실패. 다시 시도하세요.".to_string()
     })?;
     Ok(bin_dir.to_path_buf())
 }
@@ -216,7 +216,7 @@ mod tests {
         let target = root.join("out.exe");
         let empty = root.join("empty.zip");
         make_zip(&empty, &[("readme.txt", b"hi")]);
-        assert!(extract(&empty, &target).unwrap_err().contains("풀지 못했어요"));
+        assert!(extract(&empty, &target).unwrap_err().contains("압축 해제 실패"));
         let garbage = root.join("garbage.zip");
         std::fs::write(&garbage, "not a zip").unwrap();
         assert!(extract(&garbage, &target).is_err());

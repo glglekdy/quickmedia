@@ -292,7 +292,7 @@ mod tests {
     fn invalid_options_block_add() {
         let (mut c, started) = controller();
         c.set_options(DownloadOptions { section_start: "abc".into(), ..Default::default() });
-        assert_eq!(c.add_url("https://y/1"), Err(AddError::Options("시간은 1:30 처럼 써 주세요".into())));
+        assert_eq!(c.add_url("https://y/1"), Err(AddError::Options("시간 형식: 1:30".into())));
         assert!(c.cards().is_empty() && started.borrow().is_empty());
     }
 
@@ -404,7 +404,7 @@ mod tests {
         c.on_event(1, Event::Expanded { title: "큰 목록".into(), entries: entries(CONFIRM_OVER + 1), skipped: 0 });
         assert_eq!(*asked.borrow(), [CONFIRM_OVER + 1]);
         assert_eq!(c.cards().len(), 1);
-        assert_eq!((c.cards()[0].state, c.cards()[0].status.as_str()), (CardState::Cancelled, "취소했어요"));
+        assert_eq!((c.cards()[0].state, c.cards()[0].status.as_str()), (CardState::Cancelled, "취소됨"));
         assert_eq!(started.borrow().len(), 1);
         assert_eq!(c.active_count(), 0);
 

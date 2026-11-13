@@ -102,8 +102,8 @@ pub fn fetch_release(repo: &str, current: &str, is_asset: &dyn Fn(&str) -> bool)
     match http::get_bytes(&agent, &url, "application/vnd.github+json", 4 * 1024 * 1024, Duration::from_secs(20)) {
         Ok(body) => Ok(parse_release(&String::from_utf8_lossy(&body), current, is_asset)),
         Err(HttpError::Status(404)) => Ok(None), // 릴리즈가 하나도 없음
-        Err(HttpError::Status(code)) => Err(format!("릴리즈 정보를 가져오지 못했어요. (HTTP {code})")),
-        Err(_) => Err("GitHub 에 연결하지 못했어요.".to_string()),
+        Err(HttpError::Status(code)) => Err(format!("릴리즈 정보 조회 실패 (HTTP {code})")),
+        Err(_) => Err("GitHub 연결 실패".to_string()),
     }
 }
 
@@ -115,10 +115,10 @@ pub fn fetch_latest() -> Result<Option<Release>, String> {
 /// 받은 파일이 릴리즈와 맞는지.
 pub fn verify(size: u64, sha256_hex: &str, r: &Release) -> Result<(), String> {
     if r.asset_size > 0 && size != r.asset_size {
-        return Err("받은 파일 크기가 맞지 않아요. 다시 시도해 주세요.".to_string());
+        return Err("파일 크기 불일치. 다시 시도하세요.".to_string());
     }
     if !r.sha256.is_empty() && !sha256_hex.eq_ignore_ascii_case(&r.sha256) {
-        return Err("받은 파일이 손상되었어요. (SHA-256 불일치)".to_string());
+        return Err("파일 손상 (SHA-256 불일치)".to_string());
     }
     Ok(())
 }
@@ -129,7 +129,7 @@ pub fn download_to(r: &Release, target: &Path, progress: &dyn Fn(u64, u64)) -> R
     let known = r.asset_size;
     let report = |done: u64, total: u64| progress(done, if total > 0 { total } else { known });
     let (size, sha) = http::download(&http::agent(""), &r.asset_url, &part, &report)
-        .map_err(|_| "업데이트 파일을 받다가 끊겼어요. 다시 시도해 주세요.".to_string())?;
+        .map_err(|_| "업데이트 파일 다운로드 중단. 다시 시도하세요.".to_string())?;
     if let Err(message) = verify(size, &sha, r) {
         let _ = std::fs::remove_file(&part);
         return Err(message);
@@ -137,7 +137,7 @@ pub fn download_to(r: &Release, target: &Path, progress: &dyn Fn(u64, u64)) -> R
     let _ = std::fs::remove_file(target);
     std::fs::rename(&part, target).map_err(|_| {
         let _ = std::fs::remove_file(&part);
-        "업데이트 파일을 저장하지 못했어요. 다시 시도해 주세요.".to_string()
+        "업데이트 파일 저장 실패. 다시 시도하세요.".to_string()
     })
 }
 
@@ -178,9 +178,9 @@ const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
 /// 도우미를 띄운다. 호출한 쪽은 곧바로 앱을 종료해야 한다.
 pub fn launch_apply(setup: &Path) -> Result<(), String> {
     if !can_self_update() {
-        return Err("개발용 빌드라 자동 업데이트는 설치한 앱에서만 돼요.".to_string());
+        return Err("개발용 빌드에서는 자동 업데이트 불가".to_string());
     }
-    let failed = |_| "업데이트를 시작하지 못했어요. 다시 시도해 주세요.".to_string();
+    let failed = |_| "업데이트 시작 실패. 다시 시도하세요.".to_string();
     let exe = std::env::current_exe().map_err(failed)?;
     let script = update_dir().join("apply_update.ps1");
     std::fs::create_dir_all(update_dir()).map_err(failed)?;
@@ -301,8 +301,8 @@ mod tests {
         let r = Release { version: "1.1.0".into(), notes: String::new(), asset_url: "u".into(), asset_size: 3, sha256: abc.into() };
         assert_eq!(verify(3, abc, &r), Ok(()));
         assert_eq!(verify(3, &abc.to_uppercase(), &r), Ok(()));
-        assert_eq!(verify(4, "x", &r), Err("받은 파일 크기가 맞지 않아요. 다시 시도해 주세요.".to_string()));
-        assert_eq!(verify(3, "00", &r), Err("받은 파일이 손상되었어요. (SHA-256 불일치)".to_string()));
+        assert_eq!(verify(4, "x", &r), Err("파일 크기 불일치. 다시 시도하세요.".to_string()));
+        assert_eq!(verify(3, "00", &r), Err("파일 손상 (SHA-256 불일치)".to_string()));
         // GitHub 가 크기·digest 를 주지 않은 자산이면 그 검사는 건너뛴다
         let bare = Release { asset_size: 0, sha256: String::new(), ..r };
         assert_eq!(verify(5, "ff", &bare), Ok(()));

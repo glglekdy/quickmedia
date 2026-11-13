@@ -123,9 +123,9 @@ fn archived_is_skipped() {
 fn bad_url_fails() {
     let dir = folder("bad");
     let events = run(&spec("https://example.com/", &dir, |_| {}));
-    assert_eq!(events.last(), Some(&Event::Failed("지원하지 않는 링크예요".into())), "{events:?}");
+    assert_eq!(events.last(), Some(&Event::Failed("지원하지 않는 링크".into())), "{events:?}");
     let events = run(&spec("https://www.youtube.com/watch?v=aaaaaaaaaaa", &dir, |_| {}));
-    assert_eq!(events.last(), Some(&Event::Failed("삭제되었거나 볼 수 없는 영상이에요".into())));
+    assert_eq!(events.last(), Some(&Event::Failed("삭제되었거나 볼 수 없는 영상".into())));
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn missing_ytdlp_is_reported() {
     let tools = Tools { ytdlp: dir.join("nope.exe"), ffmpeg_dir: None };
     run_job(&spec(SHORT, &dir, |_| {}), &tools, &group, &|e| events.lock().unwrap().push(e));
     let events = events.into_inner().unwrap();
-    assert_eq!(events, [Event::Failed("yt-dlp 를 찾지 못했어요. 앱을 다시 설치해 주세요".into())]);
+    assert_eq!(events, [Event::Failed("yt-dlp를 찾을 수 없음. 앱을 다시 설치하세요".into())]);
 }
 
 #[test]
@@ -147,7 +147,7 @@ fn extra_args_checked() {
     let t = tools();
     assert_eq!(check_extra_args(&t, &group, "--no-mtime --limit-rate 1M"), None);
     let msg = check_extra_args(&t, &group, "--nope").unwrap();
-    assert_eq!(msg, "고급 옵션을 읽지 못했어요: no such option: --nope");
+    assert_eq!(msg, "고급 옵션 오류: no such option: --nope");
     assert!(check_extra_args(&t, &group, "--limit-rate abc").unwrap().contains("invalid rate limit"));
     assert!(check_extra_args(&t, &group, "--version").is_some(), "받기를 막는 옵션");
     let version = ytdlp_version(&t.ytdlp, &group).unwrap();

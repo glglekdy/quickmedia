@@ -51,7 +51,7 @@ impl AppUpdate {
 
 /// 업데이트하면 앱이 꺼지므로 받고 있거나 기다리는 영상이 있으면 묻는다.
 pub fn confirm_question(active_jobs: usize) -> Option<String> {
-    (active_jobs > 0).then(|| format!("받는 중인 영상 {active_jobs}개가 멈춰요. 그래도 업데이트할까요?"))
+    (active_jobs > 0).then(|| format!("다운로드 {active_jobs}개가 중단됩니다. 업데이트할까요?"))
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -82,23 +82,23 @@ pub fn app_view(state: &AppUpdate, can_self_update: bool) -> UpdateView {
         ..Default::default()
     };
     match state {
-        AppUpdate::Idle => base("아직 확인하지 않았어요", "", "업데이트 확인"),
-        AppUpdate::Checking => UpdateView { enabled: false, ..base("확인하는 중…", "최신 버전을 알아보고 있어요", "업데이트 확인") },
-        AppUpdate::UpToDate { at } => base("최신 버전이에요", &format!("{at} 에 확인했어요"), "업데이트 확인"),
-        AppUpdate::CheckFailed(message) => UpdateView { sub_error: true, ..base("확인하지 못했어요", message, "다시 확인") },
+        AppUpdate::Idle => base("확인 전", "", "업데이트 확인"),
+        AppUpdate::Checking => UpdateView { enabled: false, ..base("확인하는 중…", "최신 버전 확인 중", "업데이트 확인") },
+        AppUpdate::UpToDate { at } => base("최신 버전", &format!("{at} 확인"), "업데이트 확인"),
+        AppUpdate::CheckFailed(message) => UpdateView { sub_error: true, ..base("확인 실패", message, "다시 확인") },
         AppUpdate::Available { release, phase } => {
             let mut view = UpdateView {
                 primary: true,
                 notes: if release.notes.trim().is_empty() { Vec::new() } else { note_lines(&release.notes) },
-                ..base(&format!("새 버전 {} 이 나왔어요", release.version), "", "지금 업데이트")
+                ..base(&format!("새 버전 {}", release.version), "", "지금 업데이트")
             };
             match phase {
                 Phase::Ready if can_self_update => {
-                    view.status = "받고 나면 QuickMedia 가 잠깐 꺼졌다 다시 켜져요.".to_string();
+                    view.status = "설치 후 QuickMedia가 다시 시작됨".to_string();
                 }
                 Phase::Ready => {
                     view.enabled = false;
-                    view.status = "개발용 빌드라 자동 업데이트는 설치한 앱에서만 돼요.".to_string();
+                    view.status = "개발용 빌드에서는 자동 업데이트 불가".to_string();
                 }
                 Phase::Downloading(percent) => {
                     view.enabled = false;
@@ -112,7 +112,7 @@ pub fn app_view(state: &AppUpdate, can_self_update: bool) -> UpdateView {
                 }
                 Phase::Restarting => {
                     view.enabled = false;
-                    view.status = "곧 다시 시작해요…".to_string();
+                    view.status = "다시 시작하는 중…".to_string();
                 }
             }
             view
@@ -148,12 +148,12 @@ pub fn ytdlp_view(current: Option<&str>, state: &YtdlpUpdate) -> YtdlpView {
         YtdlpUpdate::Idle => String::new(),
         YtdlpUpdate::Checking => "확인하는 중…".to_string(),
         YtdlpUpdate::Downloading(percent) => format!("받는 중… {percent}%"),
-        YtdlpUpdate::UpToDate => "최신이에요".to_string(),
-        YtdlpUpdate::Updated(version) => format!("{version} 로 갱신했어요"),
+        YtdlpUpdate::UpToDate => "최신".to_string(),
+        YtdlpUpdate::Updated(version) => format!("{version} 갱신 완료"),
         YtdlpUpdate::Failed(message) => message.clone(),
     };
     YtdlpView {
-        version: current.unwrap_or("찾지 못했어요").to_string(),
+        version: current.unwrap_or("찾을 수 없음").to_string(),
         status,
         status_error: matches!(state, YtdlpUpdate::Failed(_)),
         enabled: !matches!(state, YtdlpUpdate::Checking | YtdlpUpdate::Downloading(_)),
@@ -175,25 +175,25 @@ mod tests {
     #[test]
     fn idle_checking_latest_failed() {
         let v = app_view(&AppUpdate::Idle, true);
-        assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled, v.primary), ("아직 확인하지 않았어요", "", "업데이트 확인", true, false));
+        assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled, v.primary), ("확인 전", "", "업데이트 확인", true, false));
         assert!(v.status.is_empty() && v.progress.is_none() && v.notes.is_empty() && !v.sub_error);
 
         let v = app_view(&AppUpdate::Checking, true);
-        assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled), ("확인하는 중…", "최신 버전을 알아보고 있어요", "업데이트 확인", false));
+        assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled), ("확인하는 중…", "최신 버전 확인 중", "업데이트 확인", false));
 
         let v = app_view(&AppUpdate::UpToDate { at: "21:05".into() }, true);
-        assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled), ("최신 버전이에요", "21:05 에 확인했어요", "업데이트 확인", true));
+        assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled), ("최신 버전", "21:05 확인", "업데이트 확인", true));
 
-        let v = app_view(&AppUpdate::CheckFailed("GitHub 에 연결하지 못했어요.".into()), true);
+        let v = app_view(&AppUpdate::CheckFailed("GitHub 연결 실패".into()), true);
         assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled, v.sub_error),
-                   ("확인하지 못했어요", "GitHub 에 연결하지 못했어요.", "다시 확인", true, true));
+                   ("확인 실패", "GitHub 연결 실패", "다시 확인", true, true));
     }
 
     #[test]
     fn available_offers_update_with_notes() {
         let v = app_view(&available(Phase::Ready), true);
-        assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled, v.primary), ("새 버전 2.1.0 이 나왔어요", "", "지금 업데이트", true, true));
-        assert_eq!(v.status, "받고 나면 QuickMedia 가 잠깐 꺼졌다 다시 켜져요.");
+        assert_eq!((v.title.as_str(), v.sub.as_str(), v.button.as_str(), v.enabled, v.primary), ("새 버전 2.1.0", "", "지금 업데이트", true, true));
+        assert_eq!(v.status, "설치 후 QuickMedia가 다시 시작됨");
         assert!(!v.status_error && v.progress.is_none());
         assert_eq!(v.notes, [NoteLine { text: "고친 점".into(), heading: true }, NoteLine { text: "• 하나".into(), heading: false }]);
     }
@@ -202,7 +202,7 @@ mod tests {
     fn dev_build_cannot_update_itself() {
         let v = app_view(&available(Phase::Ready), false);
         assert_eq!((v.button.as_str(), v.enabled, v.primary), ("지금 업데이트", false, true));
-        assert_eq!(v.status, "개발용 빌드라 자동 업데이트는 설치한 앱에서만 돼요.");
+        assert_eq!(v.status, "개발용 빌드에서는 자동 업데이트 불가");
     }
 
     #[test]
@@ -212,12 +212,12 @@ mod tests {
         let v = app_view(&available(Phase::Downloading(Some(40))), true);
         assert_eq!((v.status.as_str(), v.enabled, v.progress), ("받는 중… 40%", false, Some(0.4)));
 
-        let v = app_view(&available(Phase::Failed("받은 파일이 손상되었어요. (SHA-256 불일치)".into())), true);
+        let v = app_view(&available(Phase::Failed("파일 손상 (SHA-256 불일치)".into())), true);
         assert_eq!((v.button.as_str(), v.enabled, v.primary, v.status_error), ("다시 시도", true, true, true));
-        assert_eq!(v.status, "받은 파일이 손상되었어요. (SHA-256 불일치)");
+        assert_eq!(v.status, "파일 손상 (SHA-256 불일치)");
 
         let v = app_view(&available(Phase::Restarting), true);
-        assert_eq!((v.button.as_str(), v.enabled, v.status.as_str()), ("지금 업데이트", false, "곧 다시 시작해요…"));
+        assert_eq!((v.button.as_str(), v.enabled, v.status.as_str()), ("지금 업데이트", false, "다시 시작하는 중…"));
         assert!(!v.notes.is_empty());
     }
 
@@ -252,24 +252,24 @@ mod tests {
     #[test]
     fn confirm_text_counts_jobs() {
         assert_eq!(confirm_question(0), None);
-        assert_eq!(confirm_question(3).as_deref(), Some("받는 중인 영상 3개가 멈춰요. 그래도 업데이트할까요?"));
+        assert_eq!(confirm_question(3).as_deref(), Some("다운로드 3개가 중단됩니다. 업데이트할까요?"));
     }
 
     #[test]
     fn ytdlp_views() {
         assert_eq!(ytdlp_view(Some("2026.10.01"), &YtdlpUpdate::Idle).version, "2026.10.01");
-        assert_eq!(ytdlp_view(None, &YtdlpUpdate::Idle).version, "찾지 못했어요");
+        assert_eq!(ytdlp_view(None, &YtdlpUpdate::Idle).version, "찾을 수 없음");
         assert_eq!(ytdlp_view(Some("x"), &YtdlpUpdate::Idle).status, "");
         assert_eq!(ytdlp_view(Some("x"), &YtdlpUpdate::Checking).status, "확인하는 중…");
         assert_eq!(ytdlp_view(Some("x"), &YtdlpUpdate::Downloading(40)).status, "받는 중… 40%");
-        assert_eq!(ytdlp_view(Some("x"), &YtdlpUpdate::UpToDate).status, "최신이에요");
-        assert_eq!(ytdlp_view(Some("x"), &YtdlpUpdate::Updated("2026.11.05".into())).status, "2026.11.05 로 갱신했어요");
+        assert_eq!(ytdlp_view(Some("x"), &YtdlpUpdate::UpToDate).status, "최신");
+        assert_eq!(ytdlp_view(Some("x"), &YtdlpUpdate::Updated("2026.11.05".into())).status, "2026.11.05 갱신 완료");
         assert!(!ytdlp_view(Some("x"), &YtdlpUpdate::Downloading(1)).enabled);
         assert!(!ytdlp_view(Some("x"), &YtdlpUpdate::Checking).enabled);
         assert!(ytdlp_view(Some("x"), &YtdlpUpdate::UpToDate).enabled && ytdlp_view(None, &YtdlpUpdate::Idle).enabled);
-        let failed = ytdlp_view(Some("x"), &YtdlpUpdate::Failed("GitHub 에 연결하지 못했어요.".into()));
+        let failed = ytdlp_view(Some("x"), &YtdlpUpdate::Failed("GitHub 연결 실패".into()));
         assert!(failed.status_error && failed.enabled);
-        assert_eq!(failed.status, "GitHub 에 연결하지 못했어요.");
+        assert_eq!(failed.status, "GitHub 연결 실패");
         assert!(!ytdlp_view(Some("x"), &YtdlpUpdate::UpToDate).status_error);
     }
 }

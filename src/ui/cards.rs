@@ -88,7 +88,7 @@ impl Card {
 
     pub fn set_cancelled(&mut self) {
         self.state = CardState::Cancelled;
-        self.status = "취소했어요".to_string();
+        self.status = "취소됨".to_string();
     }
 
     pub fn set_playlist(&mut self, title: &str, added: usize, skipped: u32) {
@@ -126,7 +126,7 @@ pub fn apply_event(card: &mut Card, event: &Event) {
         }
         Event::Skipped => {
             card.state = CardState::Skipped;
-            card.status = "이미 받은 영상이라 건너뛰었어요".to_string();
+            card.status = "이미 받은 영상 · 건너뜀".to_string();
         }
         Event::Expanded { .. } => {}
     }
@@ -181,8 +181,8 @@ mod tests {
         assert!(c.show_bar() && c.percent_text().is_empty() && is_finished(c.state));
 
         let mut c = card();
-        apply_event(&mut c, &Event::Failed("지원하지 않는 링크예요".into()));
-        assert_eq!((c.state, c.status.as_str()), (CardState::Error, "실패 · 지원하지 않는 링크예요"));
+        apply_event(&mut c, &Event::Failed("지원하지 않는 링크".into()));
+        assert_eq!((c.state, c.status.as_str()), (CardState::Error, "실패 · 지원하지 않는 링크"));
         assert!(!c.show_bar() && c.percent_text().is_empty() && is_finished(c.state));
     }
 
@@ -190,10 +190,10 @@ mod tests {
     fn quiet_endings() {
         let mut c = card();
         apply_event(&mut c, &Event::Skipped);
-        assert_eq!((c.state, c.status.as_str(), c.show_bar()), (CardState::Skipped, "이미 받은 영상이라 건너뛰었어요", false));
+        assert_eq!((c.state, c.status.as_str(), c.show_bar()), (CardState::Skipped, "이미 받은 영상 · 건너뜀", false));
         let mut c = card();
         c.set_cancelled();
-        assert_eq!((c.state, c.status.as_str(), c.show_bar()), (CardState::Cancelled, "취소했어요", false));
+        assert_eq!((c.state, c.status.as_str(), c.show_bar()), (CardState::Cancelled, "취소됨", false));
         let mut c = card();
         c.set_playlist("모음", 12, 0);
         assert_eq!((c.state, c.title.as_str(), c.status.as_str(), c.show_bar()), (CardState::Playlist, "재생목록 · 모음", "영상 12개 추가", false));

@@ -69,9 +69,9 @@ mod tests {
 
     #[test]
     fn failure_offers_retry() {
-        let b = banner(&FfmpegState::Failed("변환 도구를 받다가 끊겼어요. 다시 시도해 주세요.".into()));
+        let b = banner(&FfmpegState::Failed("ffmpeg 다운로드 중단. 다시 시도하세요.".into()));
         assert_eq!(b.text, "ffmpeg 세팅 실패");
-        assert_eq!(b.detail, "변환 도구를 받다가 끊겼어요. 다시 시도해 주세요.");
+        assert_eq!(b.detail, "ffmpeg 다운로드 중단. 다시 시도하세요.");
         assert_eq!((b.error, b.retry, b.progress, b.percent.as_str()), (true, true, None, ""));
     }
 

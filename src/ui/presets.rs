@@ -42,10 +42,10 @@ pub fn to_json(list: &[UserPreset]) -> String {
 pub fn save(list: &mut Vec<UserPreset>, name: &str, opts: &DownloadOptions) -> Result<(), String> {
     let name = name.trim();
     if name.is_empty() {
-        return Err("프리셋 이름을 적어 주세요".to_string());
+        return Err("프리셋 이름을 입력하세요".to_string());
     }
     if name.chars().count() > MAX_NAME_CHARS {
-        return Err(format!("이름은 {MAX_NAME_CHARS}자까지 쓸 수 있어요"));
+        return Err(format!("이름은 최대 {MAX_NAME_CHARS}자"));
     }
     let preset = UserPreset { name: name.to_string(), opts: opts.clone() };
     if let Some(existing) = list.iter_mut().find(|p| p.name == name) {
@@ -53,7 +53,7 @@ pub fn save(list: &mut Vec<UserPreset>, name: &str, opts: &DownloadOptions) -> R
         return Ok(());
     }
     if list.len() >= MAX_PRESETS {
-        return Err(format!("프리셋은 {MAX_PRESETS}개까지 저장할 수 있어요"));
+        return Err(format!("프리셋은 최대 {MAX_PRESETS}개"));
     }
     list.push(preset);
     Ok(())
@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn names_are_checked() {
         let mut list = Vec::new();
-        assert_eq!(save(&mut list, "   ", &subs()).unwrap_err(), "프리셋 이름을 적어 주세요");
+        assert_eq!(save(&mut list, "   ", &subs()).unwrap_err(), "프리셋 이름을 입력하세요");
         assert!(save(&mut list, &"가".repeat(MAX_NAME_CHARS + 1), &subs()).unwrap_err().contains("20자"));
         save(&mut list, &"가".repeat(MAX_NAME_CHARS), &subs()).unwrap();
         assert_eq!(list.len(), 1);

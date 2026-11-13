@@ -384,7 +384,7 @@ impl App {
             }
             Err(AddError::EmptyLink) => {
                 dl.set_url("".into());
-                dl.set_url_placeholder("먼저 링크를 넣어 주세요".into());
+                dl.set_url_placeholder("링크를 먼저 입력하세요".into());
                 window.invoke_focus_url();
             }
             Err(AddError::Options(message)) => dl.set_error(message.into()),
@@ -509,7 +509,7 @@ impl App {
         let up = window.global::<Update>();
         let state = self.update.borrow();
         let view = app_view(&state, updater::can_self_update());
-        up.set_description(format!("지금 버전 {VERSION} · 앱을 켤 때 새 버전을 확인해요.").into());
+        up.set_description(format!("현재 버전 {VERSION} · 시작할 때 새 버전 확인").into());
         up.set_title(view.title.into());
         up.set_sub(view.sub.into());
         up.set_sub_error(view.sub_error);
@@ -761,7 +761,7 @@ fn start_job(tools: &Arc<Mutex<Tools>>, group: &Arc<KillGroup>, id: u32, spec: J
         };
         let job = std::panic::AssertUnwindSafe(|| run_job(&spec, &tools, &group, &emit));
         if std::panic::catch_unwind(job).is_err() {
-            emit(Event::Failed("알 수 없는 오류가 났어요".into()));
+            emit(Event::Failed("알 수 없는 오류".into()));
         }
     });
 }

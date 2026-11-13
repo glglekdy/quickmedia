@@ -85,10 +85,10 @@ export component SettingsPage inherits Rectangle {
     in property <string> page;
 
     property <string> title: page == "login" ? "로그인" : page == "network" ? "네트워크" : page == "file" ? "파일" : "고급";
-    property <string> description: page == "login" ? "로그인해야 볼 수 있는 영상은 브라우저의 로그인 정보(쿠키)를 써서 받아요."
-        : page == "network" ? "인터넷 연결과 받는 속도에 관한 설정이에요."
-        : page == "file" ? "받은 파일을 어디에 어떤 이름으로 둘지 정해요."
-        : "yt-dlp 명령줄 옵션을 그대로 넣어요. 다른 설정보다 우선해요.";
+    property <string> description: page == "login" ? "로그인이 필요한 영상은 브라우저 쿠키로 다운로드"
+        : page == "network" ? "연결과 다운로드 속도"
+        : page == "file" ? "저장 위치와 파일 이름"
+        : "yt-dlp 명령줄 옵션. 다른 설정보다 우선 적용";
 
     ScrollArea {
         content-height: body.min-height;
@@ -116,7 +116,7 @@ export component SettingsPage inherits Rectangle {
                         }
                     }
                     Text {
-                        text: "저장했어요";
+                        text: "저장됨";
                         color: Theme.success;
                         font-size: 12px;
                         vertical-alignment: center;
@@ -151,7 +151,7 @@ export component SettingsPage inherits Rectangle {
                     if page == "login": RadioRow {
                         text: "브라우저에서 가져오기";
                         checked: Settings.cookies == 1;
-                        hint: "Chrome·Edge 는 켜져 있으면 쿠키를 못 읽을 수 있어요";
+                        hint: "Chrome·Edge는 실행 중이면 쿠키를 읽지 못할 수 있음";
                         clicked => { Settings.cookies = 1; Settings.commit("cookies"); }
                         HorizontalLayout {
                             alignment: start;
@@ -173,7 +173,7 @@ export component SettingsPage inherits Rectangle {
                             max-width: 400px;
                             LineInput {
                                 height: 30px;
-                                placeholder: "파일을 고르세요";
+                                placeholder: "파일 선택";
                                 enabled: Settings.cookies == 2;
                                 invalid: Settings.error-cookie-file != "";
                                 text <=> Settings.cookie-file;
@@ -202,7 +202,7 @@ export component SettingsPage inherits Rectangle {
                     }
                     if page == "network": Row {
                         label: "속도 제한";
-                        hint: "비워 두면 제한 없이 받아요. 5M 은 초당 5MB";
+                        hint: "비우면 제한 없음. 5M = 초당 5MB";
                         error: Settings.error-rate-limit;
                         HorizontalLayout {
                             alignment: start;
@@ -229,7 +229,7 @@ export component SettingsPage inherits Rectangle {
                     }
                     if page == "network": Row {
                         label: "동시 다운로드";
-                        hint: "한 번에 받는 영상 수 (1~5)";
+                        hint: "동시에 받는 영상 수 (1~5)";
                         HorizontalLayout {
                             alignment: start;
                             Spin {
@@ -268,7 +268,7 @@ export component SettingsPage inherits Rectangle {
                     }
                     if page == "file": Row {
                         label: "직접 입력";
-                        hint: "yt-dlp 출력 템플릿 문법을 써요";
+                        hint: "yt-dlp 출력 템플릿 문법";
                         error: Settings.error-custom-template;
                         LineInput {
                             height: 30px;
@@ -282,7 +282,7 @@ export component SettingsPage inherits Rectangle {
                     }
                     if page == "file": Row {
                         label: "";
-                        hint: "끄면 '제목 (1).mp4' 처럼 번호를 붙여 새로 받아요";
+                        hint: "끄면 '제목 (1).mp4'처럼 번호를 붙여 저장";
                         HorizontalLayout {
                             alignment: start;
                             Check {

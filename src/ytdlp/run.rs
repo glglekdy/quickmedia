@@ -49,7 +49,7 @@ pub enum Event {
     Expanded { title: String, entries: Vec<PlaylistEntry>, skipped: u32 },
 }
 
-const MISSING: &str = "yt-dlp 를 찾지 못했어요. 앱을 다시 설치해 주세요";
+const MISSING: &str = "yt-dlp를 찾을 수 없음. 앱을 다시 설치하세요";
 
 /// 한 건을 끝까지 돌린다. 마지막 이벤트는 `Done`/`Skipped`/`Failed`/`Expanded` 중 하나다.
 pub fn run_job(spec: &JobSpec, tools: &Tools, group: &KillGroup, emit: &dyn Fn(Event)) {
@@ -164,9 +164,9 @@ pub fn check_extra_args(tools: &Tools, group: &KillGroup, text: &str) -> Option<
     let error = out.stderr.lines().rev().find_map(|l| l.split_once("error: ").map(|(_, msg)| msg.trim().to_string()));
     match error {
         Some(msg) if msg.starts_with("You must provide at least one URL") => None,
-        Some(msg) => Some(format!("고급 옵션을 읽지 못했어요: {msg}")),
+        Some(msg) => Some(format!("고급 옵션 오류: {msg}")),
         // 오류 없이 끝났다: --version, --help 처럼 받지 않고 끝내는 옵션
-        None => Some("고급 옵션을 읽지 못했어요: 받기를 하지 않는 옵션이 들어 있어요".into()),
+        None => Some("고급 옵션 오류: 다운로드하지 않는 옵션 포함".into()),
     }
 }
 
