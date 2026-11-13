@@ -1,6 +1,35 @@
 // 화면들이 함께 쓰는 위젯. 색은 Theme 토큰만 쓴다. 테두리 없는 납작한 모양.
 import { Theme } from "theme.slint";
 
+// 화면 여러 곳이 함께 보는 값
+export global Ui {
+    // 빈 곳을 누를 때마다 늘어난다. 떠 있는 링크 칸이 이걸 보고 접힌다.
+    in-out property <int> dismiss-tick;
+}
+
+// 떠 있는 요소 둘레로 번지는 그림자: 조금씩 넓힌 둥근 사각형 세 장.
+// 부모를 꽉 채우는 자식으로 맨 먼저 둔다.
+export component Shade inherits Rectangle {
+    in property <length> radius: 12px;
+    // 어두운 테마에서는 더 진하게
+    property <float> k: Theme.dark ? 2.2 : 1;
+    Rectangle {
+        x: -10px; y: -4px; width: parent.width + 20px; height: parent.height + 16px;
+        border-radius: root.radius + 10px;
+        background: #000000.with-alpha(0.031 * k);
+    }
+    Rectangle {
+        x: -6px; y: -2.4px; width: parent.width + 12px; height: parent.height + 10.4px;
+        border-radius: root.radius + 6px;
+        background: #000000.with-alpha(0.039 * k);
+    }
+    Rectangle {
+        x: -3px; y: -1.2px; width: parent.width + 6px; height: parent.height + 6.2px;
+        border-radius: root.radius + 3px;
+        background: #000000.with-alpha(0.047 * k);
+    }
+}
+
 // 보통 · 강조(primary) · 흐린(ghost) 버튼
 export component Btn inherits Rectangle {
     in property <string> text;
@@ -54,6 +83,8 @@ export component LineInput inherits Rectangle {
     in property <bool> read-only: false;
     in property <bool> invalid: false;
     in property <bool> enabled: true;
+    // 바탕과 테두리 없이 글자만(떠 있는 링크 칸 안에서 쓴다)
+    in property <bool> bare: false;
     out property <bool> has-focus: input.has-focus;
     callback edited(string);
     callback accepted();
@@ -61,18 +92,19 @@ export component LineInput inherits Rectangle {
     callback left();
 
     public function focus-input() { input.focus(); }
+    public function blur() { input.clear-focus(); }
 
     height: 34px;
     min-width: 60px;
     horizontal-stretch: 1;
     border-radius: 6px;
     border-width: 1px;
-    border-color: invalid ? Theme.danger : input.has-focus && !read-only ? Theme.accent : transparent;
-    background: input.has-focus && !read-only ? Theme.input-focus-bg : Theme.input-bg;
+    border-color: bare ? transparent : invalid ? Theme.danger : input.has-focus && !read-only ? Theme.accent : transparent;
+    background: bare ? transparent : input.has-focus && !read-only ? Theme.input-focus-bg : Theme.input-bg;
 
     Rectangle {
-        x: 10px;
-        width: parent.width - 20px;
+        x: root.bare ? 0px : 10px;
+        width: parent.width - 2 * self.x;
         clip: true;
 
         if input.text == "" && input.preedit-text == "": Text {
@@ -281,6 +313,10 @@ export component ScrollArea inherits Rectangle {
     flick := Flickable {
         content-width: self.width;
         content-height: max(self.height, root.content-height);
+        // 빈 곳을 누르면 떠 있는 링크 칸을 접는다
+        TouchArea {
+            clicked => { Ui.dismiss-tick += 1; }
+        }
         @children
     }
     if flick.content-height > flick.height: Rectangle {

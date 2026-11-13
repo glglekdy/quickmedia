@@ -1,6 +1,7 @@
-// 메인 창: 왼쪽 메뉴 | 화면(다운로드 · 설정 4개 · 업데이트).
+// 메인 창: 화면(다운로드 목록 · 설정 탭들) 위로, 아래에 링크 칸과 독이 떠 있다.
 import { Theme } from "theme.slint";
-import { Sidebar, Nav } from "sidebar.slint";
+import { Ui } from "widgets.slint";
+import { NavDock, SettingsTabs, Nav } from "sidebar.slint";
 import { Download, CardView } from "download_state.slint";
 import { DownloadPage } from "download.slint";
 import { Settings } from "settings_state.slint";
@@ -8,6 +9,7 @@ import { SettingsPage } from "settings.slint";
 import { Update, NoteLineView } from "update_state.slint";
 import { UpdatePage } from "update.slint";
 import { ToolDock, Glow } from "toast.slint";
+import { Composer, OptionsCard, PresetCard } from "composer.slint";
 
 export { Theme, Nav, Download, CardView, Settings, Update, NoteLineView }
 
@@ -23,31 +25,84 @@ export component AppWindow inherits Window {
     default-font-size: Theme.font-size;
 
     // 링크 칸에 커서를 둔다
-    public function focus-url() { download.focus-url(); }
+    public function focus-url() { composer.focus-url(); }
+    // 링크 칸을 접는다
+    public function dismiss-composer() { composer.dismiss(); }
 
-    HorizontalLayout {
-        Sidebar { }
-        Rectangle {
-            horizontal-stretch: 1;
-            download := DownloadPage {
-                visible: Nav.page == "download";
-            }
-            if Nav.page == "login" || Nav.page == "network" || Nav.page == "file" || Nav.page == "advanced": SettingsPage {
-                page: Nav.page;
-            }
-            if Nav.page == "update": UpdatePage { }
-            // 바닥에 떠 있는 것들
-            Glow {
-                x: 0;
-                y: parent.height - self.height;
-                width: parent.width;
-                active: Download.glow;
-            }
-            if Download.tool-text != "": ToolDock {
-                width: min(620px, parent.width - 56px);
-                x: (parent.width - self.width) / 2;
-                y: parent.height - self.height - 16px;
-            }
+    property <bool> in-settings: Nav.page != "download";
+    // 아래에 떠 있는 것들이 차지하는 높이. 설정 화면은 이만큼 위에서 끝난다.
+    property <length> floor: 84px;
+    property <length> side: 28px;
+
+    // 빈 곳을 누르면 링크 칸을 접는다
+    TouchArea {
+        clicked => { Ui.dismiss-tick += 1; }
+    }
+
+    // ---------- 화면 ----------
+    DownloadPage {
+        visible: !root.in-settings;
+    }
+    if root.in-settings: VerticalLayout {
+        height: parent.height - root.floor;
+        y: 0;
+        SettingsTabs { }
+        if Nav.page != "update": SettingsPage {
+            page: Nav.page;
         }
+        if Nav.page == "update": UpdatePage { }
+    }
+
+    // ---------- 아래에 떠 있는 것들 ----------
+    Glow {
+        x: 0;
+        y: parent.height - self.height;
+        width: parent.width;
+        active: Download.glow;
+    }
+
+    if Download.panel-open: OptionsCard {
+        x: root.side;
+        y: composer.y - self.height - 10px;
+        width: parent.width - 2 * root.side;
+    }
+    if composer.preset-open: PresetCard {
+        x: min(composer.x + composer.preset-x, parent.width - self.width - root.side);
+        y: composer.y - self.height - 10px;
+        picked => { composer.preset-open = false; }
+    }
+    if Download.error != "" && !Download.panel-open && !composer.preset-open: Rectangle {
+        x: composer.x + 20px;
+        y: composer.y - self.height - 8px;
+        width: min(message.preferred-width + 24px, composer.width - 40px);
+        height: 28px;
+        border-radius: 14px;
+        background: Theme.popup-bg;
+        border-width: 1px;
+        border-color: Theme.danger.transparentize(0.5);
+        message := Text {
+            x: 12px; width: parent.width - 24px; height: parent.height;
+            text: Download.error;
+            color: Theme.danger;
+            font-size: 12px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    if Download.tool-text != "" && !Download.panel-open && !composer.preset-open: ToolDock {
+        x: composer.x;
+        width: composer.width;
+        y: composer.y - self.height - 12px;
+    }
+
+    composer := Composer {
+        x: root.side;
+        y: parent.height - self.height - 16px;
+        width: parent.width - 2 * root.side - dock.width - 10px;
+    }
+    dock := NavDock {
+        x: parent.width - self.width - root.side;
+        y: parent.height - self.height - 16px;
+        labeled: root.width >= 820px;
     }
 }

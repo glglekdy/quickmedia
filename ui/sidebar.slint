@@ -1,119 +1,139 @@
-// 메인 창 왼쪽 메뉴. 다운로드 / 설정(누르면 아래로 펼쳐지는 로그인·네트워크·파일·고급) / 맨 아래 업데이트.
+// 화면 전환: 아래에 떠 있는 독(다운로드 / 설정)과 설정 화면 위의 탭.
 // 무엇을 누르면 어느 화면이 되는지는 Rust(src/ui/nav.rs)가 정한다.
 import { Theme } from "theme.slint";
+import { Shade } from "widgets.slint";
 
 export global Nav {
     in-out property <string> page: "download";
-    in-out property <bool> settings-open: false;
     in property <bool> update-dot: false;
     in property <string> version: "버전";
     callback go(string);
 }
 
-component NavItem inherits Rectangle {
+component DockItem inherits Rectangle {
     in property <string> text;
     in property <image> icon;
-    in property <bool> has-icon: false;
-    in property <bool> checked: false;
-    in property <bool> dot: false;
-    in property <bool> chevron: false;
-    in property <bool> chevron-open: false;
+    in property <bool> checked;
+    in property <bool> dot;
+    // 창이 좁으면 그림만 보인다
+    in property <bool> labeled: true;
     callback clicked();
 
-    height: 34px;
-    border-radius: 6px;
-    background: checked ? Theme.btn-bg : touch.has-hover ? Theme.nav-hover : transparent;
+    height: 36px;
+    width: labeled ? 34px + label.preferred-width + 14px : 44px;
+    border-radius: 18px;
+    background: checked ? Theme.btn-hover : touch.has-hover ? Theme.nav-hover : transparent;
+    animate background { duration: 120ms; }
 
     touch := TouchArea {
         mouse-cursor: pointer;
         clicked => { root.clicked(); }
     }
-    if checked: Rectangle {
-        x: 0; y: 9px; width: 3px; height: parent.height - 18px;
-        border-radius: 1.5px;
-        background: Theme.accent;
+    Image {
+        x: labeled ? 12px : (parent.width - 16px) / 2; y: (parent.height - 16px) / 2;
+        width: 16px; height: 16px;
+        source: root.icon;
+        colorize: root.checked ? Theme.text : Theme.muted;
     }
-    if has-icon: Image {
-        x: 12px; y: (parent.height - 16px) / 2; width: 16px; height: 16px;
-        source: icon;
-    }
-    Text {
-        x: 38px; width: parent.width - 38px - 24px; height: parent.height;
+    label := Text {
+        x: 34px; height: parent.height;
+        visible: root.labeled;
         text: root.text;
-        color: Theme.text;
-        font-size: 13px;
-        font-weight: checked ? 600 : 500;
+        color: root.checked ? Theme.text : Theme.muted;
+        font-weight: root.checked ? 600 : 500;
         vertical-alignment: center;
-        overflow: elide;
     }
     if dot: Rectangle {
-        x: parent.width - 16px - 3.5px; y: parent.height / 2 - 3.5px; width: 7px; height: 7px;
+        x: parent.width - 11px; y: 6px; width: 7px; height: 7px;
         border-radius: 3.5px;
         background: Theme.accent;
     }
-    if chevron: Image {
-        x: parent.width - 18px - 5px; y: (parent.height - 10px) / 2; width: 10px; height: 10px;
-        source: chevron-open ? @image-url("../assets/arrow-down.svg") : @image-url("../assets/chevron-right.svg");
+}
+
+// 아래 오른쪽에 떠 있는 독: 다운로드 목록 / 설정
+export component NavDock inherits Rectangle {
+    in property <bool> labeled: true;
+    property <bool> in-settings: Nav.page != "download";
+
+    height: 52px;
+    width: row.min-width;
+
+    Shade { radius: 26px; }
+    Rectangle {
+        border-radius: 26px;
+        background: Theme.card-bg;
+        border-width: 1px;
+        border-color: Theme.border;
+    }
+    row := HorizontalLayout {
+        padding: 8px;
+        spacing: 4px;
+        DockItem {
+            text: "다운로드";
+            icon: @image-url("../assets/download.svg");
+            labeled: root.labeled;
+            checked: !root.in-settings;
+            clicked => { Nav.go("download"); }
+        }
+        DockItem {
+            text: "설정";
+            icon: @image-url("../assets/gear.svg");
+            labeled: root.labeled;
+            checked: root.in-settings;
+            dot: Nav.update-dot;
+            clicked => { Nav.go("settings"); }
+        }
     }
 }
 
-export component Sidebar inherits Rectangle {
-    width: 168px;
-    background: Theme.surface;
+component TabItem inherits Rectangle {
+    in property <string> text;
+    in property <bool> checked;
+    in property <bool> dot;
+    callback clicked();
 
-    property <length> children-height: 2px + 4 * 34px + 3 * 2px;
+    height: 30px;
+    width: label.preferred-width + 28px;
+    border-radius: 15px;
+    background: checked ? Theme.btn-hover : touch.has-hover ? Theme.nav-hover : transparent;
+    animate background { duration: 120ms; }
 
-    Rectangle {
-        x: parent.width - 1px; width: 1px;
-        background: Theme.border;
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
     }
-    VerticalLayout {
-        padding-left: 8px; padding-right: 9px; padding-top: 12px; padding-bottom: 12px;
-        spacing: 2px;
+    label := Text {
+        width: parent.width; height: parent.height;
+        text: root.text;
+        color: root.checked ? Theme.text : Theme.muted;
+        font-weight: root.checked ? 600 : 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    if dot: Rectangle {
+        x: parent.width - 10px; y: 5px; width: 6px; height: 6px;
+        border-radius: 3px;
+        background: Theme.accent;
+    }
+}
 
-        NavItem {
-            text: "다운로드";
-            icon: @image-url("../assets/download.svg"); has-icon: true;
-            checked: Nav.page == "download";
-            clicked => { Nav.go("download"); }
-        }
-        NavItem {
-            text: "설정";
-            icon: @image-url("../assets/gear.svg"); has-icon: true;
-            chevron: true; chevron-open: Nav.settings-open;
-            checked: !Nav.settings-open && (Nav.page == "login" || Nav.page == "network" || Nav.page == "file" || Nav.page == "advanced");
-            clicked => { Nav.go("settings"); }
-        }
-        Rectangle {
-            height: Nav.settings-open ? children-height : 0px;
-            clip: true;
-            animate height { duration: 200ms; easing: ease-out; }
-            VerticalLayout {
-                y: 0; height: children-height;
-                padding-top: 2px;
-                spacing: 2px;
-                NavItem { text: "로그인"; checked: Nav.page == "login"; clicked => { Nav.go("login"); } }
-                NavItem { text: "네트워크"; checked: Nav.page == "network"; clicked => { Nav.go("network"); } }
-                NavItem { text: "파일"; checked: Nav.page == "file"; clicked => { Nav.go("file"); } }
-                NavItem { text: "고급"; checked: Nav.page == "advanced"; clicked => { Nav.go("advanced"); } }
-            }
-        }
-        Rectangle { vertical-stretch: 1; }
-        NavItem {
-            text: "업데이트";
-            icon: @image-url("../assets/update.svg"); has-icon: true;
-            dot: Nav.update-dot;
-            checked: Nav.page == "update";
-            clicked => { Nav.go("update"); }
-        }
-        Rectangle { height: 4px; }
-        HorizontalLayout {
-            padding-left: 12px;
-            Text {
-                text: Nav.version;
-                color: Theme.muted;
-                font-size: 11px;
-            }
+// 설정 화면 위의 탭 줄
+export component SettingsTabs inherits Rectangle {
+    height: 54px;
+    HorizontalLayout {
+        padding-left: 24px; padding-right: 28px; padding-top: 16px; padding-bottom: 8px;
+        spacing: 2px;
+        TabItem { text: "로그인"; checked: Nav.page == "login"; clicked => { Nav.go("login"); } }
+        TabItem { text: "네트워크"; checked: Nav.page == "network"; clicked => { Nav.go("network"); } }
+        TabItem { text: "파일"; checked: Nav.page == "file"; clicked => { Nav.go("file"); } }
+        TabItem { text: "고급"; checked: Nav.page == "advanced"; clicked => { Nav.go("advanced"); } }
+        TabItem { text: "업데이트"; checked: Nav.page == "update"; dot: Nav.update-dot; clicked => { Nav.go("update"); } }
+        Rectangle { horizontal-stretch: 1; }
+        Text {
+            text: Nav.version;
+            color: Theme.muted;
+            font-size: 11px;
+            vertical-alignment: center;
         }
     }
 }

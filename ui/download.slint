@@ -1,132 +1,7 @@
-// 다운로드 화면: 링크 입력 · 형식 고르기 · 프리셋 · 세부 옵션 · 다운로드 목록.
+// 다운로드 화면: 다운로드 목록. 링크 칸은 아래에 떠 있다(composer.slint).
 import { Theme } from "theme.slint";
-import { Btn, LineInput, Bar, ScrollArea } from "widgets.slint";
+import { Btn, Bar, ScrollArea } from "widgets.slint";
 import { Download, CardView } from "download_state.slint";
-import { OptionsPanel } from "options_panel.slint";
-
-component SegButton inherits Rectangle {
-    in property <string> text;
-    in property <bool> checked;
-    callback clicked();
-    height: 26px;
-    min-width: label.min-width + 28px;
-    horizontal-stretch: 0;
-    border-radius: 4px;
-    background: checked ? Theme.btn-hover : transparent;
-    label := Text {
-        text: root.text;
-        color: root.checked || touch.has-hover ? Theme.text : Theme.muted;
-        font-weight: root.checked ? 600 : 500;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-    }
-    touch := TouchArea {
-        clicked => { root.clicked(); }
-    }
-}
-
-// 저장해 둔 프리셋을 고르고, 지금 세부 옵션을 이름 붙여 저장하는 메뉴.
-component PresetMenu inherits Rectangle {
-    property <bool> chosen: Download.user-preset >= 0 && Download.user-preset < Download.user-presets.length;
-    height: button.height;
-    min-width: button.min-width;
-    horizontal-stretch: 0;
-
-    button := Btn {
-        kind: "ghost";
-        text: root.chosen ? "프리셋 · " + Download.user-presets[Download.user-preset] : "프리셋";
-        has-icon: true;
-        icon: @image-url("../assets/arrow-down.svg");
-        clicked => { popup.show(); }
-    }
-    popup := PopupWindow {
-        x: 0;
-        y: root.height + 4px;
-        width: 260px;
-        // 이름 칸을 눌러도 닫히지 않게
-        close-policy: close-on-click-outside;
-        Rectangle {
-            background: Theme.popup-bg;
-            border-width: 1px;
-            border-color: Theme.border;
-            border-radius: 8px;
-            VerticalLayout {
-                padding: 6px;
-                spacing: 2px;
-                if Download.user-presets.length == 0: Text {
-                    height: 30px;
-                    text: "  저장한 프리셋이 없어요";
-                    color: Theme.muted;
-                    font-size: 12px;
-                    vertical-alignment: center;
-                }
-                for name[i] in Download.user-presets: Rectangle {
-                    height: 30px;
-                    border-radius: 4px;
-                    background: pick.has-hover || i == Download.user-preset ? Theme.btn-hover : transparent;
-                    pick := TouchArea {
-                        clicked => {
-                            Download.apply-user-preset(i);
-                            popup.close();
-                        }
-                    }
-                    Text {
-                        x: 8px; width: parent.width - 44px;
-                        text: name;
-                        color: Theme.text;
-                        font-weight: i == Download.user-preset ? 600 : 500;
-                        vertical-alignment: center;
-                        overflow: elide;
-                    }
-                    Rectangle {
-                        x: parent.width - 28px; y: 3px;
-                        width: 24px; height: 24px;
-                        border-radius: 4px;
-                        background: remove.has-hover ? Theme.btn-pressed : transparent;
-                        Text {
-                            text: "×";
-                            color: remove.has-hover ? Theme.danger : Theme.muted;
-                            font-size: 15px;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
-                        }
-                        remove := TouchArea {
-                            clicked => { Download.delete-user-preset(i); }
-                        }
-                    }
-                }
-                Rectangle {
-                    height: 9px;
-                    Rectangle { y: 4px; height: 1px; background: Theme.border; }
-                }
-                Text {
-                    text: "  지금 세부 옵션을 프리셋으로 저장";
-                    color: Theme.muted;
-                    font-size: 12px;
-                    height: 20px;
-                    vertical-alignment: center;
-                }
-                HorizontalLayout {
-                    spacing: 6px;
-                    LineInput {
-                        height: 30px;
-                        text <=> Download.preset-name;
-                        placeholder: "이름";
-                        invalid: Download.preset-error != "";
-                        accepted => { Download.save-preset(); }
-                    }
-                    Btn { text: "저장"; clicked => { Download.save-preset(); } }
-                }
-                if Download.preset-error != "": Text {
-                    text: "  " + Download.preset-error;
-                    color: Theme.danger;
-                    font-size: 12px;
-                    wrap: word-wrap;
-                }
-            }
-        }
-    }
-}
 
 // 다운로드 한 건. 사이트 · 제목 · 상태 · 진행률.
 component Card inherits Rectangle {
@@ -210,101 +85,64 @@ component Card inherits Rectangle {
     }
 }
 
-export component DownloadPage inherits VerticalLayout {
-    public function focus-url() { url.focus-input(); }
-
-    // 입력
+export component DownloadPage inherits Rectangle {
     VerticalLayout {
-        padding-left: 28px; padding-right: 28px; padding-top: 24px; padding-bottom: 16px;
-        spacing: 10px;
-
+        // 목록 머리
         HorizontalLayout {
-            spacing: 6px;
-            url := LineInput {
-                text <=> Download.url;
-                placeholder: Download.url-placeholder;
-                accepted => { Download.add(); }
-            }
-            VerticalLayout {
-                alignment: center;
-                Btn { text: "붙여넣기"; clicked => { Download.paste(); } }
-            }
-        }
-        HorizontalLayout {
-            spacing: 8px;
-            Rectangle {
-                horizontal-stretch: 0;
-                height: 32px;
-                border-radius: 6px;
-                background: Theme.input-bg;
-                HorizontalLayout {
-                    padding: 3px;
-                    spacing: 2px;
-                    SegButton { text: "최고 화질"; checked: Download.preset == "best"; clicked => { Download.preset-clicked("best"); } }
-                    SegButton { text: "720p"; checked: Download.preset == "720p"; clicked => { Download.preset-clicked("720p"); } }
-                    SegButton { text: "MP3 음원"; checked: Download.preset == "mp3"; clicked => { Download.preset-clicked("mp3"); } }
-                }
-            }
-            VerticalLayout {
-                alignment: center;
-                PresetMenu { }
-            }
-            VerticalLayout {
-                alignment: center;
-                Btn {
-                    kind: "ghost";
-                    text: Download.more-text;
-                    has-icon: true;
-                    icon: Download.panel-open ? @image-url("../assets/arrow-up.svg") : @image-url("../assets/arrow-down.svg");
-                    clicked => { Download.toggle-panel(); }
-                }
+            padding-left: 28px; padding-right: 28px; padding-top: 18px; padding-bottom: 8px;
+            Text {
+                text: "다운로드 목록";
+                color: Theme.heading;
+                font-size: 15px;
+                font-weight: 600;
+                vertical-alignment: center;
             }
             Rectangle { horizontal-stretch: 1; }
-            VerticalLayout {
+            if Download.cards.length > 0: Btn { kind: "ghost"; text: "끝난 항목 지우기"; clicked => { Download.clear-finished(); } }
+        }
+
+        // 목록. 아래에 떠 있는 링크 칸 밑으로 지나가며 스크롤된다.
+        ScrollArea {
+            content-height: list.min-height;
+            if Download.cards.length == 0: VerticalLayout {
+                y: (parent.height - 150px) / 2 - 40px; height: 150px; width: parent.width;
+                spacing: 10px;
                 alignment: center;
-                Btn { kind: "primary"; text: "다운로드"; clicked => { Download.add(); } }
+                HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 56px; height: 56px;
+                        border-radius: 28px;
+                        background: Theme.card-bg;
+                        Image {
+                            x: 16px; y: 16px; width: 24px; height: 24px;
+                            source: @image-url("../assets/download.svg");
+                            colorize: Theme.muted;
+                        }
+                    }
+                }
+                Text {
+                    text: "아직 받은 영상이 없어요";
+                    color: Theme.text;
+                    font-size: 14px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                }
+                Text {
+                    text: "아래 칸에 링크를 붙여넣고 Enter 를 누르세요";
+                    color: Theme.muted;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                }
             }
-        }
-        if Download.error != "": Text {
-            text: Download.error;
-            color: Theme.danger;
-            font-size: 12px;
-            wrap: word-wrap;
-        }
-        if Download.panel-open: OptionsPanel { }
-    }
-
-    // 목록 머리
-    HorizontalLayout {
-        padding-left: 28px; padding-right: 28px; padding-top: 4px; padding-bottom: 6px;
-        Text {
-            text: "다운로드 목록";
-            color: Theme.muted;
-            font-size: 12px;
-            font-weight: 500;
-            vertical-alignment: center;
-        }
-        Rectangle { horizontal-stretch: 1; }
-        Btn { kind: "ghost"; text: "끝난 항목 지우기"; clicked => { Download.clear-finished(); } }
-    }
-
-    // 목록
-    ScrollArea {
-        content-height: list.min-height;
-        if Download.cards.length == 0: Text {
-            y: 32px; height: 24px; width: parent.width;
-            text: "아직 받은 영상이 없어요";
-            color: Theme.muted;
-            font-size: 14px;
-            horizontal-alignment: center;
-        }
-        list := VerticalLayout {
-            padding-left: 28px; padding-right: 28px; padding-bottom: 16px;
-            spacing: 8px;
-            alignment: start;
-            for card in Download.cards: Card {
-                card: card;
-                open => { Download.reveal(card.id); }
+            list := VerticalLayout {
+                padding-left: 28px; padding-right: 28px; padding-bottom: 130px;
+                spacing: 8px;
+                alignment: start;
+                for card in Download.cards: Card {
+                    card: card;
+                    open => { Download.reveal(card.id); }
+                }
             }
         }
     }

@@ -365,6 +365,9 @@ impl App {
                 dl.set_url("".into());
                 dl.set_error("".into());
                 self.sync();
+                // 받기 시작한 것이 보이게 목록으로 가고 링크 칸은 접는다
+                window.global::<Nav>().invoke_go("download".into());
+                window.invoke_dismiss_composer();
             }
             Err(AddError::EmptyLink) => {
                 dl.set_url("".into());
@@ -754,15 +757,20 @@ fn wire_nav(window: &AppWindow) {
     let nav_global = window.global::<Nav>();
     nav_global.set_version(format!("버전 {VERSION}").into());
     let weak = window.as_weak();
+    // 설정 쪽에서 마지막으로 보던 탭. 독의 '설정'을 누르면 여기로 돌아간다.
+    let last_tab = RefCell::new(String::new());
     nav_global.on_go(move |key| {
         let Some(window) = weak.upgrade() else { return };
         let nav_global = window.global::<Nav>();
-        let (page, open) = nav::nav_after_click(&nav_global.get_page(), nav_global.get_settings_open(), &key);
+        let page = nav::page_after_click(&nav_global.get_page(), &last_tab.borrow(), &key);
         if page != nav_global.get_page().as_str() {
             with_app(|app| app.leave_settings(false));
+            window.invoke_dismiss_composer();
+        }
+        if nav::is_tab(&page) {
+            *last_tab.borrow_mut() = page.clone();
         }
         nav_global.set_page(page.into());
-        nav_global.set_settings_open(open);
     });
 }
 
@@ -899,7 +907,9 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
     let dl = window.global::<Download>();
     dl.set_cards(ModelRc::from(cards.clone()));
     dl.set_folder(folder.as_str().into());
-    dl.set_panel_open(panel_open);
+    // 세부 옵션은 떠 있는 판이라 켤 때는 늘 접어 둔다
+    let _ = panel_open;
+    dl.set_panel_open(false);
     show_options(&dl, &opts);
     show_settings(&window.global::<Settings>(), &settings);
 

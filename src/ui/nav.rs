@@ -1,81 +1,78 @@
-//! 왼쪽 메뉴의 상태. 다운로드 / 설정(로그인·네트워크·파일·고급) / 업데이트.
+//! 화면 전환. 아래 독의 다운로드 / 설정, 설정 화면 위의 탭(로그인·네트워크·파일·고급·업데이트).
 
 pub const SETTINGS_KEYS: [&str; 4] = ["login", "network", "file", "advanced"];
+/// 설정 화면 위에 놓이는 탭. 업데이트도 여기에 있다.
+pub const TAB_KEYS: [&str; 5] = ["login", "network", "file", "advanced", "update"];
 
+/// 값을 고쳐 저장하는 설정 화면인지(업데이트 화면은 아니다).
 pub fn is_settings_page(key: &str) -> bool {
     SETTINGS_KEYS.contains(&key)
 }
 
-/// 메뉴 항목 `clicked` 를 눌렀을 때의 (화면, 설정 묶음 펼침).
-///
-/// 설정 화면으로 가면 묶음을 펼치고, 다른 화면으로 가면 접는다. '설정' 자체는 묶음만 여닫는다.
-pub fn nav_after_click(page: &str, open: bool, clicked: &str) -> (String, bool) {
-    if clicked != "settings" {
-        return (clicked.to_string(), is_settings_page(clicked));
-    }
-    if open {
-        return (page.to_string(), false);
-    }
-    if is_settings_page(page) {
-        // 접어 둔 채 보던 설정 화면은 그대로 둔다
-        return (page.to_string(), true);
-    }
-    ("login".to_string(), true)
+/// 독의 '설정' 쪽 화면인지.
+pub fn is_tab(key: &str) -> bool {
+    TAB_KEYS.contains(&key)
 }
 
-/// '설정' 항목의 선택 표시: 보던 설정 화면이 접혀 숨었을 때만.
-pub fn settings_item_checked(page: &str, open: bool) -> bool {
-    is_settings_page(page) && !open
+/// `clicked` 를 눌렀을 때 갈 화면. `last_tab` 은 설정 쪽에서 마지막으로 보던 탭.
+///
+/// 독의 '설정'(`"settings"`)은 보던 탭으로 돌아간다. 이미 설정 쪽이면 그대로 둔다.
+pub fn page_after_click(page: &str, last_tab: &str, clicked: &str) -> String {
+    if clicked != "settings" {
+        return if clicked == "download" || is_tab(clicked) { clicked.to_string() } else { page.to_string() };
+    }
+    if is_tab(page) {
+        return page.to_string();
+    }
+    if is_tab(last_tab) { last_tab.to_string() } else { "login".to_string() }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// 처음 상태에서 차례로 누른 뒤의 (화면, 펼침).
-    fn click(keys: &[&str]) -> (String, bool) {
-        keys.iter().fold(("download".to_string(), false), |(page, open), key| nav_after_click(&page, open, key))
-    }
-
-    fn state(page: &str, open: bool) -> (String, bool) {
-        (page.to_string(), open)
-    }
-
-    #[test]
-    fn settings_expands_to_login() {
-        assert_eq!(click(&["settings"]), state("login", true));
+    /// 처음 상태에서 차례로 누른 뒤의 (화면, 마지막 탭).
+    fn click(keys: &[&str]) -> (String, String) {
+        keys.iter().fold(("download".to_string(), String::new()), |(page, last), key| {
+            let next = page_after_click(&page, &last, key);
+            let last = if is_tab(&next) { next.clone() } else { last };
+            (next, last)
+        })
     }
 
     #[test]
-    fn settings_again_collapses_but_keeps_the_page() {
-        // 접기만 하고 화면은 그대로. 보던 설정 화면이 숨었으니 '설정'에 선택 표시
-        assert_eq!(click(&["settings", "settings"]), state("login", false));
-        assert!(settings_item_checked("login", false));
-        assert!(!settings_item_checked("login", true));
-        assert!(!settings_item_checked("download", false));
+    fn settings_opens_login_first() {
+        assert_eq!(click(&["settings"]).0, "login");
     }
 
     #[test]
-    fn category_and_download() {
-        assert_eq!(click(&["settings", "network"]), state("network", true));
-        assert_eq!(click(&["settings", "network", "download"]), state("download", false));
+    fn settings_returns_to_the_tab_last_seen() {
+        assert_eq!(click(&["settings", "file", "download", "settings"]).0, "file");
+        assert_eq!(click(&["settings", "update", "download", "settings"]).0, "update");
     }
 
     #[test]
-    fn reexpand_keeps_settings_page() {
-        assert_eq!(click(&["settings", "file", "settings", "settings"]), state("file", true));
+    fn settings_while_in_settings_stays_put() {
+        assert_eq!(click(&["settings", "network", "settings"]).0, "network");
     }
 
     #[test]
-    fn update_collapses_settings() {
-        assert_eq!(click(&["settings", "update"]), state("update", false));
-        assert_eq!(click(&["update", "settings"]), state("login", true));
+    fn tabs_and_download_go_where_they_say() {
+        assert_eq!(click(&["settings", "advanced"]).0, "advanced");
+        assert_eq!(click(&["settings", "advanced", "download"]).0, "download");
+        assert_eq!(page_after_click("download", "", "update"), "update");
     }
 
     #[test]
-    fn selecting_a_settings_page_directly_expands() {
-        assert_eq!(nav_after_click("download", false, "advanced"), state("advanced", true));
-        assert!(SETTINGS_KEYS.iter().all(|k| is_settings_page(k)));
-        assert!(!is_settings_page("download") && !is_settings_page("update") && !is_settings_page("settings"));
+    fn unknown_keys_change_nothing() {
+        assert_eq!(page_after_click("file", "file", "nope"), "file");
+        assert_eq!(page_after_click("download", "nope", "settings"), "login");
+    }
+
+    #[test]
+    fn which_pages_save_settings() {
+        assert!(SETTINGS_KEYS.iter().all(|k| is_settings_page(k) && is_tab(k)));
+        assert!(is_tab("update") && !is_settings_page("update"));
+        assert!(!is_tab("download") && !is_tab("settings") && !is_settings_page("download"));
     }
 }
