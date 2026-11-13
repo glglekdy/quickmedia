@@ -7,7 +7,7 @@ import { Settings } from "settings_state.slint";
 import { SettingsPage } from "settings.slint";
 import { Update, NoteLineView } from "update_state.slint";
 import { UpdatePage } from "update.slint";
-import { ToolToast } from "toast.slint";
+import { ToolDock, Glow } from "toast.slint";
 
 export { Theme, Nav, Download, CardView, Settings, Update, NoteLineView }
 
@@ -36,10 +36,19 @@ export component AppWindow inherits Window {
                 page: Nav.page;
             }
             if Nav.page == "update": UpdatePage { }
-            // 어느 화면에서나 오른쪽 아래에 뜬다. 다운로드 화면에서는 저장 위치 줄 위에.
-            if Download.tool-text != "": ToolToast {
-                x: parent.width - self.width - 20px;
-                y: parent.height - self.height - (Nav.page == "download" ? 74px : 20px);
+            // 바닥에 떠 있는 것들. 다운로드 화면에서는 저장 위치 줄 위에 얹힌다.
+            Glow {
+                property <length> floor: Nav.page == "download" ? 58px : 0px;
+                x: 0;
+                y: parent.height - self.height - floor;
+                width: parent.width;
+                active: Download.glow;
+            }
+            if Download.tool-text != "": ToolDock {
+                property <length> floor: Nav.page == "download" ? 58px : 0px;
+                width: min(620px, parent.width - 56px);
+                x: (parent.width - self.width) / 2;
+                y: parent.height - self.height - floor - 16px;
             }
         }
     }

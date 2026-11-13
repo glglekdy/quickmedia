@@ -272,37 +272,6 @@ export component Bar inherits Rectangle {
     }
 }
 
-// 받은 만큼 왼쪽부터 채워지는 그라데이션 바탕과 아래쪽 띠. 카드나 알림 안에 깔아 쓴다.
-// 부모가 `clip: true` 여야 둥근 모서리 밖으로 나가지 않는다.
-export component ProgressFill inherits Rectangle {
-    in property <float> value; // 0~1
-    // 받는 중이면 바탕을 채우고 그 위로 빛이 지나간다. 아니면 띠만 보인다.
-    in property <bool> active: true;
-    property <float> sweep: root.active ? mod(animation-tick(), 1.6s) / 1.6s : 0;
-    property <length> filled: self.width * clamp(root.value, 0, 1);
-    animate filled { duration: 300ms; easing: ease-out; }
-
-    if root.active: Rectangle {
-        x: 0; y: 0;
-        width: root.filled;
-        height: parent.height;
-        background: @linear-gradient(90deg, Theme.accent.transparentize(0.92) 0%, Theme.accent.transparentize(0.55) 100%);
-        clip: true;
-        Rectangle {
-            x: (parent.width + self.width) * root.sweep - self.width;
-            width: 90px;
-            height: parent.height;
-            background: @linear-gradient(90deg, #ffffff00 0%, #ffffff26 50%, #ffffff00 100%);
-        }
-    }
-    Rectangle {
-        x: 0; y: parent.height - self.height;
-        width: root.filled;
-        height: 4px;
-        background: @linear-gradient(90deg, #f97316 0%, Theme.accent 55%, #fb7185 100%);
-    }
-}
-
 // 세로로 스크롤되는 영역. 오른쪽에 얇은 손잡이를 보인다.
 export component ScrollArea inherits Rectangle {
     in property <length> content-height;

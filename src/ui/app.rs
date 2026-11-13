@@ -281,6 +281,7 @@ impl App {
     /// 카드 목록에 생긴 변화를 화면에 옮긴다.
     pub fn sync(&self) {
         let changes = self.controller.borrow_mut().take_changes();
+        self.show_glow();
         let controller = self.controller.borrow();
         let cards = controller.cards();
         // 카드가 늘거나 줄었으면 통째로 다시 채우고, 아니면 바뀐 줄만 고친다.
@@ -294,6 +295,14 @@ impl App {
                     self.cards.set_row_data(index, self.view(card));
                 }
             }
+        }
+    }
+
+    /// 받고 있거나 기다리는 것이 있으면 바닥의 빛을 켠다.
+    fn show_glow(&self) {
+        let busy = self.controller.borrow().active_count() > 0 || matches!(*self.ffmpeg.borrow(), FfmpegState::Fetching(_));
+        if let Some(window) = self.window() {
+            window.global::<Download>().set_glow(busy);
         }
     }
 
@@ -612,6 +621,7 @@ impl App {
         let view = banner(&state);
         let release = !state.holds_jobs();
         *self.ffmpeg.borrow_mut() = state;
+        self.show_glow();
         if let Some(window) = self.window() {
             let dl = window.global::<Download>();
             dl.set_tool_text(view.text.into());

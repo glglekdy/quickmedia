@@ -1,49 +1,106 @@
-// 화면 오른쪽 아래에 떠 있는 알림. ffmpeg 를 받는 동안 진행 상황을 채워지는 그라데이션으로 보인다.
+// 화면 아래에 떠 있는 것들.
+// - ToolDock: ffmpeg 를 받는 동안 진행 상황을 보이는 떠 있는 바.
+// - Glow: 받는 동안 바닥에서 번지는 빛.
 import { Theme } from "theme.slint";
-import { Btn, ProgressFill } from "widgets.slint";
+import { Btn, Bar } from "widgets.slint";
 import { Download } from "download_state.slint";
 
-export component ToolToast inherits Rectangle {
-    width: 320px;
-    height: body.min-height;
-    border-radius: 12px;
-    background: Theme.popup-bg;
-    border-width: 1px;
-    border-color: Download.tool-error ? Theme.danger.transparentize(0.5) : Theme.accent.transparentize(0.55);
-    clip: true;
+// 받는 동안 바닥에서 번지는 빛. 켜질 때 420ms, 꺼질 때 520ms, 켜진 뒤엔 2.6초 주기로 숨쉰다.
+export component Glow inherits Rectangle {
+    in property <bool> active;
+    // 어두운 바탕에서는 같은 알파가 묻힌다
+    property <float> boost: Theme.dark ? 1.5 : 1;
+    // 꺼져 있을 때는 시계를 보지 않아 다시 그리지 않는다
+    property <float> breath: root.active ? 0.86 - 0.14 * cos(360deg * mod(animation-tick(), 2.6s) / 2.6s) : 1;
+    property <float> shown: 0;
 
-    if Download.tool-show-bar: ProgressFill {
-        value: Download.tool-progress;
+    height: 260px;
+    opacity: root.shown * root.breath;
+    background: @linear-gradient(0deg,
+        Theme.accent.with-alpha(0.26 * boost) 0%,
+        Theme.accent.with-alpha(0.13 * boost) 38%,
+        Theme.accent.with-alpha(0.04 * boost) 72%,
+        Theme.accent.with-alpha(0) 100%);
+
+    states [
+        on when root.active: {
+            shown: 1;
+            in { animate shown { duration: 420ms; easing: cubic-bezier(0.215, 0.61, 0.355, 1); } }
+            out { animate shown { duration: 520ms; easing: cubic-bezier(0.215, 0.61, 0.355, 1); } }
+        }
+    ]
+}
+
+export component ToolDock inherits Rectangle {
+    // 어두운 테마에서는 그림자를 더 진하게
+    property <float> shade: Theme.dark ? 2.2 : 1;
+    height: dock.height;
+
+    // 둘레로 번지는 그림자: 조금씩 넓힌 둥근 사각형 세 장
+    Rectangle {
+        x: -10px; y: -4px; width: parent.width + 20px; height: parent.height + 16px;
+        border-radius: 22px;
+        background: #000000.with-alpha(0.031 * shade);
+    }
+    Rectangle {
+        x: -6px; y: -2.4px; width: parent.width + 12px; height: parent.height + 10.4px;
+        border-radius: 18px;
+        background: #000000.with-alpha(0.039 * shade);
+    }
+    Rectangle {
+        x: -3px; y: -1.2px; width: parent.width + 6px; height: parent.height + 6.2px;
+        border-radius: 15px;
+        background: #000000.with-alpha(0.047 * shade);
     }
 
-    body := VerticalLayout {
-        padding-left: 16px; padding-right: 14px; padding-top: 12px; padding-bottom: 14px;
-        spacing: 6px;
-        HorizontalLayout {
-            spacing: 8px;
-            Text {
+    dock := Rectangle {
+        y: 0;
+        height: body.min-height;
+        border-radius: 12px;
+        background: Theme.card-bg;
+        border-width: 1px;
+        border-color: Theme.border;
+
+        body := HorizontalLayout {
+            padding-left: 16px; padding-right: 14px; padding-top: 12px; padding-bottom: 12px;
+            spacing: 12px;
+            VerticalLayout {
                 horizontal-stretch: 1;
-                text: Download.tool-text;
-                color: Download.tool-error ? Theme.danger : Theme.heading;
-                font-weight: 600;
-                vertical-alignment: center;
-                overflow: elide;
+                alignment: center;
+                spacing: 8px;
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text {
+                        horizontal-stretch: 1;
+                        text: Download.tool-text;
+                        color: Download.tool-error ? Theme.danger : Theme.text;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    if Download.tool-percent != "": Text {
+                        text: Download.tool-percent;
+                        color: Theme.percent;
+                        font-size: 12px;
+                        font-weight: 600;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                    }
+                }
+                if Download.tool-show-bar: Bar {
+                    value: Download.tool-progress;
+                }
+                if Download.tool-detail != "": Text {
+                    text: Download.tool-detail;
+                    color: Theme.muted;
+                    font-size: 12px;
+                    wrap: word-wrap;
+                }
             }
-            if Download.tool-percent != "": Text {
-                text: Download.tool-percent;
-                color: Theme.heading;
-                font-size: 15px;
-                font-weight: 700;
-                horizontal-alignment: right;
-                vertical-alignment: center;
+            if Download.tool-retry: VerticalLayout {
+                alignment: center;
+                Btn { text: "다시 시도"; clicked => { Download.retry-tool(); } }
             }
-            if Download.tool-retry: Btn { text: "다시 시도"; clicked => { Download.retry-tool(); } }
-        }
-        if Download.tool-detail != "": Text {
-            text: Download.tool-detail;
-            color: Theme.muted;
-            font-size: 12px;
-            wrap: word-wrap;
         }
     }
 }

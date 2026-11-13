@@ -28,7 +28,9 @@ export global Download {
     in property <string> error;
     in property <[CardView]> cards;
     in property <string> folder;
-    // 변환 도구(ffmpeg)를 받는 동안 떠 있는 알림(toast.slint). 빈 글이면 보이지 않는다.
+    // 받고 있는 것이 있다: 바닥에서 빛이 번진다(toast.slint)
+    in property <bool> glow;
+    // 변환 도구(ffmpeg)를 받는 동안 떠 있는 바(toast.slint). 빈 글이면 보이지 않는다.
     in property <string> tool-text;
     in property <string> tool-detail;
     in property <string> tool-percent;
