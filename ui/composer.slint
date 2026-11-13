@@ -219,7 +219,17 @@ export component Composer inherits Rectangle {
 // 링크 칸 위에 뜨는 판. 안의 내용 높이에 맞춘다.
 export component FloatCard inherits Rectangle {
     in property <length> content-height;
+    // 보일지. 늘 만들어 두고 이 값에 따라 올라오거나 내려간다.
+    in property <bool> shown;
+    // 다 올라왔을 때 아래 변이 놓일 자리
+    in property <length> bottom;
+    property <float> rise: root.shown ? 1 : 0;
+    animate rise { duration: 300ms; easing: cubic-bezier(0.34, 1.36, 0.64, 1); }
+
     height: content-height + 24px;
+    y: root.bottom - self.height + (1 - root.rise) * 22px;
+    opacity: clamp(root.rise, 0, 1);
+    visible: root.rise > 0.01;
     Shade { radius: 14px; }
     Rectangle {
         border-radius: 14px;

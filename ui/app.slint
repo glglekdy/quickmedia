@@ -13,6 +13,13 @@ import { Composer, OptionsCard, PresetCard } from "composer.slint";
 
 export { Theme, Nav, Download, CardView, Settings, Update, NoteLineView }
 
+// 설정 쪽 화면 하나
+component TabView inherits Rectangle {
+    in property <string> key;
+    if root.key != "update": SettingsPage { page: root.key; }
+    if root.key == "update": UpdatePage { }
+}
+
 export component AppWindow inherits Window {
     title: "QuickMedia";
     icon: @image-url("../assets/icon.png");
@@ -28,6 +35,13 @@ export component AppWindow inherits Window {
     public function focus-url() { composer.focus-url(); }
     // 링크 칸을 접는다
     public function dismiss-composer() { composer.dismiss(); }
+    // 받기 버튼에서 동그라미가 나와 새 카드 자리로 날아가 펼쳐진다
+    public function launch-card() {
+        if !root.in-settings {
+            root.fly-from = animation-tick();
+            root.flying = true;
+        }
+    }
 
     property <bool> in-settings: Nav.page != "download";
     // 아래에 떠 있는 것들이 차지하는 높이. 설정 화면은 이만큼 위에서 끝난다.
@@ -40,6 +54,49 @@ export component AppWindow inherits Window {
     property <length> strip: root.width - 2 * root.side - 10px;
     property <length> composer-wide: root.strip - dock.small-width;
 
+    // ---------- 화면 전환 ----------
+    // 새 화면은 가는 쪽에서 밀려 들어오며 나타나고, 보던 화면은 반대쪽으로 밀려 나가며 흐려진다.
+    // 움직이는 동안에만 시계를 본다(끝나면 다시 그리지 않는다).
+    property <string> page: Nav.page;
+    property <string> shown: "download";
+    property <string> leaving: "download";
+    property <bool> moving;
+    property <duration> move-from;
+    property <float> direction: 1;
+    property <float> move-raw: root.moving ? clamp((animation-tick() - root.move-from) / 300ms, 0, 1) : 1;
+    // 처음에 빠르고 끝에서 느려진다
+    property <float> move: 1 - pow(1 - root.move-raw, 3);
+    property <length> slide: 56px;
+
+    pure function order(key: string) -> int {
+        key == "download" ? 0 : key == "login" ? 1 : key == "network" ? 2 : key == "file" ? 3 : key == "advanced" ? 4 : 5
+    }
+    changed page => {
+        if root.page != root.shown {
+            root.leaving = root.shown;
+            root.shown = root.page;
+            root.direction = order(root.shown) >= order(root.leaving) ? 1 : -1;
+            root.move-from = animation-tick();
+            root.moving = true;
+        }
+    }
+    Timer {
+        interval: 320ms;
+        running: root.moving;
+        triggered => { root.moving = false; }
+    }
+
+    // 받기 버튼에서 날아가는 동그라미
+    property <bool> flying;
+    property <duration> fly-from;
+    property <float> fly-raw: root.flying ? clamp((animation-tick() - root.fly-from) / 520ms, 0, 1) : 1;
+    property <float> fly: 1 - pow(1 - root.fly-raw, 3);
+    Timer {
+        interval: 540ms;
+        running: root.flying;
+        triggered => { root.flying = false; }
+    }
+
     // 빈 곳을 누르면 링크 칸을 접는다
     TouchArea {
         clicked => { Ui.dismiss-tick += 1; }
@@ -47,15 +104,30 @@ export component AppWindow inherits Window {
 
     // ---------- 화면 ----------
     DownloadPage {
-        visible: !root.in-settings;
-    }
-    if root.in-settings: VerticalLayout {
-        height: parent.height - root.floor;
+        property <bool> here: root.shown == "download";
+        property <bool> going: root.moving && root.leaving == "download";
+        visible: self.here || self.going;
+        x: self.here ? root.direction * root.slide * (1 - root.move) : -root.direction * root.slide * root.move;
         y: 0;
-        if Nav.page != "update": SettingsPage {
-            page: Nav.page;
-        }
-        if Nav.page == "update": UpdatePage { }
+        width: parent.width;
+        height: parent.height;
+        opacity: self.here ? root.move : 1 - root.move;
+    }
+    if root.shown != "download": TabView {
+        key: root.shown;
+        x: root.direction * root.slide * (1 - root.move);
+        y: 0;
+        width: parent.width;
+        height: parent.height - root.floor;
+        opacity: root.move;
+    }
+    if root.moving && root.leaving != "download": TabView {
+        key: root.leaving;
+        x: -root.direction * root.slide * root.move;
+        y: 0;
+        width: parent.width;
+        height: parent.height - root.floor;
+        opacity: 1 - root.move;
     }
 
     // ---------- 아래에 떠 있는 것들 ----------
@@ -66,14 +138,16 @@ export component AppWindow inherits Window {
         active: Download.glow;
     }
 
-    if Download.panel-open: OptionsCard {
+    OptionsCard {
+        shown: Download.panel-open;
+        bottom: composer.y - 10px;
         x: root.side;
-        y: composer.y - self.height - 10px;
         width: parent.width - 2 * root.side;
     }
-    if composer.preset-open: PresetCard {
+    PresetCard {
+        shown: composer.preset-open;
+        bottom: composer.y - 10px;
         x: min(composer.x + composer.preset-x, parent.width - self.width - root.side);
-        y: composer.y - self.height - 10px;
         picked => { composer.preset-open = false; }
     }
     if Download.error != "" && !root.in-settings && !Download.panel-open && !composer.preset-open: Rectangle {
@@ -111,6 +185,25 @@ export component AppWindow inherits Window {
             self.focus-url();
         }
     }
+    // 받기 버튼 자리에서 나와 목록 맨 위 카드 자리로 가며 카드 모양으로 펼쳐지고, 끝에서 흐려진다
+    if root.flying: Rectangle {
+        property <length> from-x: composer.x + composer.width - 44px;
+        property <length> from-y: root.height - 16px - 44px;
+        property <length> to-x: root.side;
+        property <length> to-y: 52px;
+        property <length> to-w: root.width - 2 * root.side;
+        property <length> to-h: 92px;
+        x: self.from-x + (self.to-x - self.from-x) * root.fly;
+        y: self.from-y + (self.to-y - self.from-y) * root.fly;
+        width: 36px + (self.to-w - 36px) * root.fly;
+        height: 36px + (self.to-h - 36px) * root.fly;
+        border-radius: 18px + (10px - 18px) * root.fly;
+        background: Theme.accent.mix(Theme.card-bg, 1 - root.fly);
+        border-width: 1px;
+        border-color: Theme.accent.mix(Theme.border, 1 - root.fly);
+        opacity: root.fly-raw < 0.6 ? 1 : 1 - (root.fly-raw - 0.6) / 0.4;
+    }
+
     dock := NavDock {
         x: parent.width - self.width - root.side;
         y: parent.height - self.height - 16px;

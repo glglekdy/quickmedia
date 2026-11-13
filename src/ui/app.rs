@@ -271,7 +271,7 @@ impl App {
         write_group(&mut *self.store.borrow_mut(), "options", &values);
     }
 
-    fn view(&self, card: &Card) -> CardView {
+    fn view(&self, card: &Card, fresh: bool) -> CardView {
         let icon = self.icon_for(&card.host);
         CardView {
             id: card.id as i32,
@@ -291,6 +291,7 @@ impl App {
             progress: card.percent / 100.0,
             show_bar: card.show_bar(),
             can_open: card.state == CardState::Done,
+            fresh,
         }
     }
 
@@ -317,7 +318,7 @@ impl App {
         let controller = self.controller.borrow();
         for (index, card) in controller.cards().iter().enumerate() {
             if card.host == host && index < self.cards.row_count() {
-                self.cards.set_row_data(index, self.view(card));
+                self.cards.set_row_data(index, self.view(card, false));
             }
         }
     }
@@ -330,13 +331,15 @@ impl App {
         let cards = controller.cards();
         // 카드가 늘거나 줄었으면 통째로 다시 채우고, 아니면 바뀐 줄만 고친다.
         if changes.iter().any(|c| !matches!(c, Change::Update(_))) {
-            self.cards.set_vec(cards.iter().map(|c| self.view(c)).collect::<Vec<_>>());
+            // 이번에 새로 들어온 카드만 떠오르는 움직임을 준다
+            let fresh = |i: usize| changes.iter().any(|c| *c == Change::Insert(i));
+            self.cards.set_vec(cards.iter().enumerate().map(|(i, c)| self.view(c, fresh(i))).collect::<Vec<_>>());
             return;
         }
         for change in changes {
             if let Change::Update(index) = change {
                 if let Some(card) = cards.get(index).filter(|_| index < self.cards.row_count()) {
-                    self.cards.set_row_data(index, self.view(card));
+                    self.cards.set_row_data(index, self.view(card, false));
                 }
             }
         }
@@ -373,6 +376,8 @@ impl App {
                 dl.set_url("".into());
                 dl.set_error("".into());
                 self.sync();
+                // 받기 버튼에서 동그라미가 나와 새 카드 자리로 날아가 펼쳐진다
+                window.invoke_launch_card();
                 // 받기 시작한 것이 보이게 목록으로 가고 링크 칸은 접는다
                 window.global::<Nav>().invoke_go("download".into());
                 window.invoke_dismiss_composer();
