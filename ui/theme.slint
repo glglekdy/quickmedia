@@ -1,5 +1,8 @@
 // 색 토큰. 무채색 회색 단계 + 빨강 강조색. OS 라이트/다크 설정을 따르고, 바꾸면 바로 따라간다.
 import { Palette } from "std-widgets.slint";
+// LINE Seed Sans KR (SIL Open Font License 1.1). exe 에 넣어 어느 PC 에서나 같은 글꼴로 보인다.
+import "../assets/fonts/LINESeedKR-Rg.ttf";
+import "../assets/fonts/LINESeedKR-Bd.ttf";
 
 export global Theme {
     out property <bool> dark: Palette.color-scheme == ColorScheme.dark;
@@ -30,5 +33,5 @@ export global Theme {
     out property <color> scroll-handle: dark ? #2c2c2c : #d4d4d4;
     out property <color> nav-hover: dark ? #232323 : #f0f0f0;
     out property <length> font-size: 13px;
-    out property <string> font: "Malgun Gothic";
+    out property <string> font: "LINE Seed Sans KR";
 }
