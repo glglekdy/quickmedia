@@ -62,8 +62,8 @@ fn or<'a>(a: &'a str, b: &'a str) -> &'a str {
 
 /// 조회 결과(stdout 전체)를 읽는다. `archived` 는 받은 기록의 `"<추출기 소문자> <id>"` 를 받는다.
 pub fn parse_probe(stdout: &str, url: &str, archived: &dyn Fn(&str) -> bool) -> Result<Probe, String> {
-    let json = stdout.lines().rev().find(|l| l.trim_start().starts_with('{')).ok_or("영상 정보 읽기 실패")?;
-    let info: Value = serde_json::from_str(json.trim()).map_err(|_| "영상 정보 읽기 실패")?;
+    let json = stdout.lines().rev().find(|l| l.trim_start().starts_with('{')).ok_or(crate::lang::tr("영상 정보 읽기 실패", "Couldn't read video info"))?;
+    let info: Value = serde_json::from_str(json.trim()).map_err(|_| crate::lang::tr("영상 정보 읽기 실패", "Couldn't read video info"))?;
     let site_key = text(&info, "extractor_key").to_string();
     let webpage_url = or(text(&info, "webpage_url"), url).to_string();
 
@@ -208,7 +208,7 @@ impl ProgressMeter {
                 if index == count - 1 && *done >= total {
                     self.finishing = true;
                     self.last_pct = 100.0;
-                    return Some((100.0, "파일 정리 중…".to_string()));
+                    return Some((100.0, crate::lang::tr("파일 정리 중…", "Finishing up…").to_string()));
                 }
                 let frac = (*done as f64 / total as f64).min(1.0);
                 // 크기 추정치가 바뀌어도 뒤로 가지 않게
@@ -221,7 +221,7 @@ impl ProgressMeter {
                 }
                 self.last_pct = pct;
                 self.last_emit = Some(now);
-                let status = if speed.is_empty() { "받는 중".to_string() } else { format!("받는 중 · {speed}") };
+                let status = if speed.is_empty() { crate::lang::tr("받는 중", "Downloading").to_string() } else { crate::trf!("받는 중 · {speed}", "Downloading · {speed}") };
                 Some((pct, status))
             }
             _ => None,
@@ -230,25 +230,29 @@ impl ProgressMeter {
 }
 
 /// 위에서부터 맞춰 본다. 쿠키 실패 메시지에도 "Sign in" 이 섞일 수 있어 쿠키가 먼저다.
-const ERRORS: &[(&[&str], &str)] = &[
-    (&["unsupported url", "is not a valid url"], "지원하지 않는 링크"),
-    (
-        &["cookies database", "failed to decrypt", "cookie database"],
-        "브라우저 쿠키 읽기 실패. 브라우저를 닫고 다시 시도하거나 cookies.txt를 사용하세요",
-    ),
-    (
-        &["sign in", "login required", "private video", "members-only"],
-        "로그인이 필요한 영상. 설정 → 로그인에서 쿠키를 켜세요",
-    ),
-    (
-        &["video unavailable", "video is unavailable", "this video is not available"],
-        "삭제되었거나 볼 수 없는 영상",
-    ),
-    (&["requested format is not available"], "선택한 화질·형식 없음. 세부 옵션을 바꾸세요"),
-    (&["getaddrinfo", "timed out", "unable to connect", "proxyerror"], "인터넷 연결이나 프록시 설정을 확인하세요"),
-];
+fn known_errors() -> [(&'static [&'static str], &'static str); 6] {
+    [
+        (&["unsupported url", "is not a valid url"], crate::lang::tr("지원하지 않는 링크", "Unsupported link")),
+        (
+            &["cookies database", "failed to decrypt", "cookie database"],
+            crate::lang::tr("브라우저 쿠키 읽기 실패. 브라우저를 닫고 다시 시도하거나 cookies.txt를 사용하세요", "Couldn't read browser cookies. Close the browser and try again, or use cookies.txt"),
+        ),
+        (
+            &["sign in", "login required", "private video", "members-only"],
+            crate::lang::tr("로그인이 필요한 영상. 설정 → 로그인에서 쿠키를 켜세요", "This video needs a login. Turn on cookies in Settings → Login"),
+        ),
+        (
+            &["video unavailable", "video is unavailable", "this video is not available"],
+            crate::lang::tr("삭제되었거나 볼 수 없는 영상", "Video was removed or is unavailable"),
+        ),
+        (&["requested format is not available"], crate::lang::tr("선택한 화질·형식 없음. 세부 옵션을 바꾸세요", "That quality or format isn't available. Change the options")),
+        (&["getaddrinfo", "timed out", "unable to connect", "proxyerror"], crate::lang::tr("인터넷 연결이나 프록시 설정을 확인하세요", "Check your internet connection or proxy")),
+    ]
+}
 
-const UPDATE_HINT: &str = " · 설정 → 업데이트에서 yt-dlp를 갱신하세요";
+fn update_hint() -> &'static str {
+    crate::lang::tr(" · 설정 → 업데이트에서 yt-dlp를 갱신하세요", " · Update yt-dlp in Settings → Update")
+}
 
 /// yt-dlp 의 오류 출력을 화면에 보일 문구로.
 pub fn friendly_error(stderr: &str) -> String {
@@ -256,19 +260,20 @@ pub fn friendly_error(stderr: &str) -> String {
     let all = if errors.is_empty() { stderr.trim().to_string() } else { errors.join("\n") };
     let low = all.to_lowercase();
     if (low.contains("ffmpeg") || low.contains("ffprobe")) && (low.contains("not found") || low.contains("not installed")) {
-        return "ffmpeg를 찾을 수 없음".to_string();
+        return crate::lang::tr("ffmpeg를 찾을 수 없음", "ffmpeg not found").to_string();
     }
-    for (needles, message) in ERRORS {
+    for (needles, message) in known_errors() {
         if needles.iter().any(|n| low.contains(n)) {
             return message.to_string();
         }
     }
+    let hint = update_hint();
     let last = errors.last().copied().unwrap_or_else(|| all.lines().last().unwrap_or(""));
     let short: String = last.replace("ERROR: ", "").chars().take(160).collect();
     if short.trim().is_empty() {
-        return format!("알 수 없는 오류{UPDATE_HINT}");
+        return crate::trf!("알 수 없는 오류{hint}", "Unknown error{hint}");
     }
-    format!("{short}{UPDATE_HINT}")
+    format!("{short}{hint}")
 }
 
 #[cfg(test)]

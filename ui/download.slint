@@ -1,5 +1,5 @@
 // 다운로드 화면: 다운로드 목록. 링크 칸은 아래에 떠 있다(composer.slint).
-import { Theme } from "theme.slint";
+import { Theme, Lang } from "theme.slint";
 import { Btn, Bar, ScrollArea } from "widgets.slint";
 import { Download, CardView } from "download_state.slint";
 
@@ -91,7 +91,7 @@ component Card inherits Rectangle {
             }
             if card.can-open: Btn {
                 kind: "ghost";
-                text: "열기";
+                text: (Lang.en ? "Open" : "열기");
                 clicked => { root.open(); }
             }
         }
@@ -113,14 +113,14 @@ export component DownloadPage inherits Rectangle {
         HorizontalLayout {
             padding-left: 28px; padding-right: 28px; padding-top: 18px; padding-bottom: 8px;
             Text {
-                text: "다운로드 목록";
+                text: (Lang.en ? "Downloads" : "다운로드 목록");
                 color: Theme.heading;
                 font-size: 15px;
                 font-weight: 600;
                 vertical-alignment: center;
             }
             Rectangle { horizontal-stretch: 1; }
-            if Download.cards.length > 0: Btn { kind: "ghost"; text: "끝난 항목 지우기"; clicked => { Download.clear-finished(); } }
+            if Download.cards.length > 0: Btn { kind: "ghost"; text: (Lang.en ? "Clear finished" : "끝난 항목 지우기"); clicked => { Download.clear-finished(); } }
         }
 
         // 목록. 아래에 떠 있는 링크 칸 밑으로 지나가며 스크롤된다.
@@ -144,14 +144,14 @@ export component DownloadPage inherits Rectangle {
                     }
                 }
                 Text {
-                    text: "다운로드 내역 없음";
+                    text: (Lang.en ? "No downloads yet" : "다운로드 내역 없음");
                     color: Theme.text;
                     font-size: 14px;
                     font-weight: 600;
                     horizontal-alignment: center;
                 }
                 Text {
-                    text: "링크를 붙여넣고 Enter";
+                    text: (Lang.en ? "Paste a link and press Enter" : "링크를 붙여넣고 Enter");
                     color: Theme.muted;
                     font-size: 12px;
                     horizontal-alignment: center;

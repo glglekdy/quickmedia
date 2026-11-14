@@ -85,23 +85,23 @@ pub fn playlist_items_ok(text: &str) -> bool {
 pub fn validate_options(o: &DownloadOptions) -> BTreeMap<&'static str, String> {
     let mut errors = BTreeMap::new();
     if o.kind == "video" && o.container == "webm" && o.codec == "h264" {
-        errors.insert("codec", "WEBM은 H.264를 지원하지 않음. 코덱이나 파일 형식을 바꾸세요".to_string());
+        errors.insert("codec", crate::lang::tr("WEBM은 H.264를 지원하지 않음. 코덱이나 파일 형식을 바꾸세요", "WEBM can't hold H.264. Change the codec or the container").to_string());
     }
     if !o.section_start.is_empty() || !o.section_end.is_empty() {
         let start = if o.section_start.is_empty() { Some(0.0) } else { parse_duration(&o.section_start) };
         let end = if o.section_end.is_empty() { Some(f64::INFINITY) } else { parse_duration(&o.section_end) };
         match (start, end) {
             (Some(s), Some(e)) if s >= e => {
-                errors.insert("section", "끝 시간은 시작보다 뒤여야 함".to_string());
+                errors.insert("section", crate::lang::tr("끝 시간은 시작보다 뒤여야 함", "End time must be after the start").to_string());
             }
             (Some(_), Some(_)) => {}
             _ => {
-                errors.insert("section", "시간 형식: 1:30".to_string());
+                errors.insert("section", crate::lang::tr("시간 형식: 1:30", "Time format: 1:30").to_string());
             }
         }
     }
     if o.playlist == "all" && !o.playlist_items.is_empty() && !playlist_items_ok(&o.playlist_items.replace(' ', "")) {
-        errors.insert("playlist_items", "범위 형식: 1-10, 15".to_string());
+        errors.insert("playlist_items", crate::lang::tr("범위 형식: 1-10, 15", "Range format: 1-10, 15").to_string());
     }
     errors
 }
@@ -115,17 +115,17 @@ pub fn extra_has_url(text: &str) -> bool {
 pub fn validate_settings(s: &AppSettings, extra: ExtraCheck) -> BTreeMap<&'static str, String> {
     let mut errors = BTreeMap::new();
     if !s.rate_limit.is_empty() && parse_bytes(&s.rate_limit).is_none() {
-        errors.insert("rate_limit", "속도 형식: 5M, 500K".to_string());
+        errors.insert("rate_limit", crate::lang::tr("속도 형식: 5M, 500K", "Speed format: 5M, 500K").to_string());
     }
     if s.cookies == "file" && !Path::new(&s.cookie_file).is_file() {
-        errors.insert("cookie_file", "쿠키 파일 없음".to_string());
+        errors.insert("cookie_file", crate::lang::tr("쿠키 파일 없음", "Cookie file not found").to_string());
     }
     if s.name_template == "custom" && s.custom_template.trim().is_empty() {
-        errors.insert("custom_template", "파일 이름 규칙을 입력하세요".to_string());
+        errors.insert("custom_template", crate::lang::tr("파일 이름 규칙을 입력하세요", "Enter a file name template").to_string());
     }
     if !s.extra_args.trim().is_empty() {
         if extra_has_url(&s.extra_args) {
-            errors.insert("extra_args", "고급 옵션에 링크는 넣을 수 없음".to_string());
+            errors.insert("extra_args", crate::lang::tr("고급 옵션에 링크는 넣을 수 없음", "Links aren't allowed in advanced options").to_string());
         } else if let Some(msg) = extra(&s.extra_args) {
             errors.insert("extra_args", msg);
         }

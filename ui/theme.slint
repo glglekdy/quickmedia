@@ -4,6 +4,11 @@ import { Palette } from "std-widgets.slint";
 import "../assets/fonts/LINESeedKR-Rg.ttf";
 import "../assets/fonts/LINESeedKR-Bd.ttf";
 
+// 화면 언어. 글은 쓰는 자리에서 `Lang.en ? "English" : "한국어"` 로 고른다.
+export global Lang {
+    in property <bool> en;
+}
+
 export global Theme {
     out property <bool> dark: Palette.color-scheme == ColorScheme.dark;
     out property <color> bg: dark ? #141414 : #f5f5f5;

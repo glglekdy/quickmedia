@@ -48,8 +48,22 @@ pub fn display_name(extractor_key: &str, host: &str) -> String {
         return host.to_string();
     }
     match NAMES.iter().find(|(prefix, _)| low.starts_with(prefix)) {
-        Some((_, name)) => name.to_string(),
+        Some((_, name)) => localized(name).to_string(),
         None => base.to_string(),
+    }
+}
+
+/// 한글 이름은 영어 화면에서 로마자로.
+fn localized(name: &'static str) -> &'static str {
+    if !crate::lang::english() {
+        return name;
+    }
+    match name {
+        "니코니코" => "Niconico",
+        "네이버 TV" => "Naver TV",
+        "치지직" => "Chzzk",
+        "카카오TV" => "KakaoTV",
+        other => other,
     }
 }
 

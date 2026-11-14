@@ -3,6 +3,7 @@
 pub mod app_info;
 pub mod ffmpeg;
 pub mod http;
+pub mod lang;
 pub mod migrate;
 pub mod options;
 pub mod queue;

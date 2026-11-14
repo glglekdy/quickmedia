@@ -90,7 +90,7 @@ mod debug {
             slint::Timer::single_shot(std::time::Duration::from_millis(3000), move || {
                 let phase = match kind.as_str() {
                     "downloading" => app::Phase::Downloading(Some(40)),
-                    "failed" => app::Phase::Failed("파일 손상 (SHA-256 불일치)".into()),
+                    "failed" => app::Phase::Failed(crate::lang::tr("파일 손상 (SHA-256 불일치)", "File is corrupted (SHA-256 mismatch)").into()),
                     _ => app::Phase::Ready,
                 };
                 app::with_app(|app| app.debug_fake_release(phase));
@@ -101,7 +101,7 @@ mod debug {
             slint::Timer::single_shot(std::time::Duration::from_millis(800), move || {
                 let state = match kind.parse::<u8>() {
                     Ok(percent) => app::FfmpegState::Fetching(Some(percent)),
-                    Err(_) => app::FfmpegState::Failed("ffmpeg 다운로드 중단. 다시 시도하세요.".into()),
+                    Err(_) => app::FfmpegState::Failed(crate::lang::tr("ffmpeg 다운로드 중단. 다시 시도하세요.", "ffmpeg download interrupted. Try again.").into()),
                 };
                 app::with_app(|app| app.debug_fake_ffmpeg(state));
             });

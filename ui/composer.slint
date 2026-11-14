@@ -1,6 +1,6 @@
 // 아래에 떠 있는 링크 입력 칸. 평소에는 한 줄짜리 알약 모양이고,
 // 누르면 위로 늘어나며 형식 · 프리셋 · 세부 옵션이 나타난다.
-import { Theme } from "theme.slint";
+import { Theme, Lang } from "theme.slint";
 import { Btn, LineInput, Shade, Ui } from "widgets.slint";
 import { Download } from "download_state.slint";
 import { OptionsPanel } from "options_panel.slint";
@@ -31,6 +31,10 @@ component SegButton inherits Rectangle {
 component Chip inherits Rectangle {
     in property <string> text;
     in property <bool> active;
+    // 둘레가 강조색으로 은은히 빛난다(바꿔 둔 세부 옵션이 있을 때)
+    in property <bool> lit;
+    property <float> glow: root.lit ? (Theme.dark ? 1.5 : 1) : 0;
+    animate glow { duration: 260ms; easing: ease-out; }
     callback clicked();
     height: 30px;
     min-width: row.min-width;
@@ -38,6 +42,34 @@ component Chip inherits Rectangle {
     border-radius: 15px;
     background: active ? Theme.btn-pressed : touch.has-hover ? Theme.btn-hover : Theme.btn-bg;
     animate background { duration: 120ms; }
+    border-width: 1px;
+    border-color: Theme.accent.with-alpha(min(1, 0.5 * root.glow));
+    Rectangle {
+        visible: root.glow > 0;
+        x: -7px; y: -7px; width: parent.width + 14px; height: parent.height + 14px;
+        border-radius: 22px;
+        background: Theme.accent.with-alpha(0.05 * root.glow);
+    }
+    Rectangle {
+        visible: root.glow > 0;
+        x: -4px; y: -4px; width: parent.width + 8px; height: parent.height + 8px;
+        border-radius: 19px;
+        background: Theme.accent.with-alpha(0.08 * root.glow);
+    }
+    Rectangle {
+        visible: root.glow > 0;
+        x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px;
+        border-radius: 17px;
+        background: Theme.accent.with-alpha(0.12 * root.glow);
+    }
+    // 빛 위에 단추 바탕을 다시 덮는다
+    Rectangle {
+        visible: root.glow > 0;
+        border-radius: 15px;
+        background: root.background;
+        border-width: 1px;
+        border-color: root.border-color;
+    }
     touch := TouchArea {
         clicked => { root.clicked(); }
     }
@@ -174,14 +206,14 @@ export component Composer inherits Rectangle {
                 seg := HorizontalLayout {
                     padding: 2px;
                     spacing: 2px;
-                    SegButton { text: "최고 화질"; checked: Download.preset == "best"; clicked => { Download.preset-clicked("best"); } }
+                    SegButton { text: (Lang.en ? "Best" : "최고 화질"); checked: Download.preset == "best"; clicked => { Download.preset-clicked("best"); } }
                     SegButton { text: "720p"; checked: Download.preset == "720p"; clicked => { Download.preset-clicked("720p"); } }
-                    SegButton { text: "MP3 음원"; checked: Download.preset == "mp3"; clicked => { Download.preset-clicked("mp3"); } }
+                    SegButton { text: (Lang.en ? "MP3" : "MP3 음원"); checked: Download.preset == "mp3"; clicked => { Download.preset-clicked("mp3"); } }
                 }
             }
             Chip {
                 property <bool> chosen: Download.user-preset >= 0 && Download.user-preset < Download.user-presets.length;
-                text: self.chosen ? Download.user-presets[Download.user-preset] : "프리셋";
+                text: self.chosen ? Download.user-presets[Download.user-preset] : (Lang.en ? "Presets" : "프리셋");
                 active: root.preset-open;
                 clicked => {
                     if Download.panel-open { Download.toggle-panel(); }
@@ -191,6 +223,7 @@ export component Composer inherits Rectangle {
             Chip {
                 text: Download.more-text;
                 active: Download.panel-open;
+                lit: Download.more-changed;
                 clicked => {
                     root.preset-open = false;
                     Download.toggle-panel();
@@ -271,7 +304,7 @@ export component PresetCard inherits FloatCard {
         spacing: 2px;
         if Download.user-presets.length == 0: Text {
             height: 30px;
-            text: "저장된 프리셋 없음";
+            text: (Lang.en ? "No saved presets" : "저장된 프리셋 없음");
             color: Theme.muted;
             font-size: 12px;
             vertical-alignment: center;
@@ -316,7 +349,7 @@ export component PresetCard inherits FloatCard {
             Rectangle { y: 6px; height: 1px; background: Theme.border; }
         }
         Text {
-            text: "현재 옵션을 프리셋으로 저장";
+            text: (Lang.en ? "Save current options as a preset" : "현재 옵션을 프리셋으로 저장");
             color: Theme.muted;
             font-size: 12px;
             height: 22px;
@@ -327,11 +360,11 @@ export component PresetCard inherits FloatCard {
             LineInput {
                 height: 30px;
                 text <=> Download.preset-name;
-                placeholder: "이름";
+                placeholder: (Lang.en ? "Name" : "이름");
                 invalid: Download.preset-error != "";
                 accepted => { Download.save-preset(); }
             }
-            Btn { text: "저장"; clicked => { Download.save-preset(); } }
+            Btn { text: (Lang.en ? "Save" : "저장"); clicked => { Download.save-preset(); } }
         }
         if Download.preset-error != "": Text {
             text: Download.preset-error;

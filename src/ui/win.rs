@@ -10,6 +10,13 @@ use windows_sys::Win32::System::SystemInformation::GetLocalTime;
 
 const CF_UNICODETEXT: u32 = 13;
 
+/// Windows 표시 언어가 한국어인지.
+pub fn system_is_korean() -> bool {
+    // SAFETY: 인자 없이 값만 돌려주는 호출이다.
+    let id = unsafe { windows_sys::Win32::Globalization::GetUserDefaultUILanguage() };
+    id & 0x3ff == 0x12
+}
+
 /// 클립보드의 글. 글이 아니거나 열지 못하면 `None`.
 pub fn clipboard_text() -> Option<String> {
     // SAFETY: 클립보드를 연 동안에만 핸들을 쓰고, 0 으로 끝나는 UTF-16 글을 끝까지만 읽는다.
@@ -65,7 +72,7 @@ pub fn pick_folder(title: &str, start: &str) -> Option<PathBuf> {
 }
 
 pub fn pick_file(title: &str, filter_name: &str, extensions: &[&str]) -> Option<PathBuf> {
-    rfd::FileDialog::new().set_title(title).add_filter(filter_name, extensions).add_filter("모든 파일", &["*"]).pick_file()
+    rfd::FileDialog::new().set_title(title).add_filter(filter_name, extensions).add_filter(crate::lang::tr("모든 파일", "All files"), &["*"]).pick_file()
 }
 
 /// 지금 시각 `21:05`.

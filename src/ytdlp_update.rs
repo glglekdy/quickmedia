@@ -95,7 +95,7 @@ pub fn install(r: &Release, bin_dir: &Path, group: &KillGroup, progress: &dyn Fn
     // 받은 파일이 실제로 도는지 본 뒤에야 쓴다
     if ytdlp_version(&path, group).as_deref() != Some(r.version.as_str()) {
         let _ = std::fs::remove_file(&path);
-        return Err("yt-dlp 실행 확인 실패. 다시 시도하세요.".to_string());
+        return Err(crate::lang::tr("yt-dlp 실행 확인 실패. 다시 시도하세요.", "yt-dlp didn't run. Try again.").to_string());
     }
     Ok(Candidate { path, version: r.version.clone() })
 }

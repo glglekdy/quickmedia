@@ -1,8 +1,8 @@
-//! 화면 전환. 아래 독의 다운로드 / 설정, 설정 화면 위의 탭(로그인·네트워크·파일·고급·업데이트).
+//! 화면 전환. 아래 독의 다운로드 / 설정, 설정 화면 위의 탭(일반·로그인·네트워크·파일·고급·업데이트).
 
-pub const SETTINGS_KEYS: [&str; 4] = ["login", "network", "file", "advanced"];
+pub const SETTINGS_KEYS: [&str; 5] = ["general", "login", "network", "file", "advanced"];
 /// 설정 화면 위에 놓이는 탭. 업데이트도 여기에 있다.
-pub const TAB_KEYS: [&str; 5] = ["login", "network", "file", "advanced", "update"];
+pub const TAB_KEYS: [&str; 6] = ["general", "login", "network", "file", "advanced", "update"];
 
 /// 값을 고쳐 저장하는 설정 화면인지(업데이트 화면은 아니다).
 pub fn is_settings_page(key: &str) -> bool {
@@ -24,7 +24,7 @@ pub fn page_after_click(page: &str, last_tab: &str, clicked: &str) -> String {
     if is_tab(page) {
         return page.to_string();
     }
-    if is_tab(last_tab) { last_tab.to_string() } else { "login".to_string() }
+    if is_tab(last_tab) { last_tab.to_string() } else { "general".to_string() }
 }
 
 #[cfg(test)]
@@ -41,8 +41,8 @@ mod tests {
     }
 
     #[test]
-    fn settings_opens_login_first() {
-        assert_eq!(click(&["settings"]).0, "login");
+    fn settings_opens_general_first() {
+        assert_eq!(click(&["settings"]).0, "general");
     }
 
     #[test]
@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn unknown_keys_change_nothing() {
         assert_eq!(page_after_click("file", "file", "nope"), "file");
-        assert_eq!(page_after_click("download", "nope", "settings"), "login");
+        assert_eq!(page_after_click("download", "nope", "settings"), "general");
     }
 
     #[test]

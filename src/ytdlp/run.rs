@@ -49,7 +49,9 @@ pub enum Event {
     Expanded { title: String, entries: Vec<PlaylistEntry>, skipped: u32 },
 }
 
-const MISSING: &str = "yt-dlp를 찾을 수 없음. 앱을 다시 설치하세요";
+fn missing() -> &'static str {
+    crate::lang::tr("yt-dlp를 찾을 수 없음. 앱을 다시 설치하세요", "yt-dlp not found. Reinstall the app")
+}
 
 /// 한 건을 끝까지 돌린다. 마지막 이벤트는 `Done`/`Skipped`/`Failed`/`Expanded` 중 하나다.
 pub fn run_job(spec: &JobSpec, tools: &Tools, group: &KillGroup, emit: &dyn Fn(Event)) {
@@ -58,7 +60,7 @@ pub fn run_job(spec: &JobSpec, tools: &Tools, group: &KillGroup, emit: &dyn Fn(E
 
 fn job(spec: &JobSpec, tools: &Tools, group: &KillGroup, emit: &dyn Fn(Event)) -> Event {
     if !tools.ytdlp.is_file() {
-        return Event::Failed(MISSING.into());
+        return Event::Failed(missing().into());
     }
     let archive = spec.archive.to_string_lossy();
     let mut args = full_args(&spec.opts, &spec.settings, &spec.folder, &archive, spec.playlist.as_ref());
@@ -109,7 +111,7 @@ fn probe(spec: &JobSpec, tools: &Tools, group: &KillGroup, args: &[String]) -> R
     cmd.args(&probe_args).args(PROBE_ARGS).arg("--").arg(&spec.url);
     let out = match run(group, &mut cmd, None) {
         Ok(Some(out)) => out,
-        _ => return Err(MISSING.into()),
+        _ => return Err(missing().into()),
     };
     let ids = if spec.opts.skip_archived { recorded(&spec.archive) } else { Default::default() };
     match parse_probe(&out.stdout, &spec.url, &|id| ids.contains(id)) {
@@ -126,7 +128,7 @@ fn download(spec: &JobSpec, tools: &Tools, group: &KillGroup, args: Vec<String>,
     }
     cmd.arg("--").arg(&spec.url);
     let Ok(mut child) = group.spawn(&mut cmd) else {
-        return Event::Failed(MISSING.into());
+        return Event::Failed(missing().into());
     };
     let stderr = drain_stderr(&mut child);
     let mut meter = ProgressMeter::new();
@@ -164,9 +166,9 @@ pub fn check_extra_args(tools: &Tools, group: &KillGroup, text: &str) -> Option<
     let error = out.stderr.lines().rev().find_map(|l| l.split_once("error: ").map(|(_, msg)| msg.trim().to_string()));
     match error {
         Some(msg) if msg.starts_with("You must provide at least one URL") => None,
-        Some(msg) => Some(format!("고급 옵션 오류: {msg}")),
+        Some(msg) => Some(crate::trf!("고급 옵션 오류: {msg}", "Advanced options error: {msg}")),
         // 오류 없이 끝났다: --version, --help 처럼 받지 않고 끝내는 옵션
-        None => Some("고급 옵션 오류: 다운로드하지 않는 옵션 포함".into()),
+        None => Some(crate::lang::tr("고급 옵션 오류: 다운로드하지 않는 옵션 포함", "Advanced options error: includes an option that doesn't download").into()),
     }
 }
 

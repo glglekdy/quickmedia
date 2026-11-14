@@ -1,6 +1,6 @@
 // 설정 화면 4개(로그인 / 네트워크 / 파일 / 고급). 바꾸면 바로 저장한다.
 // 제목 + 설명 + 카드(이름 | 입력 칸, 그 아래 안내·오류) 틀.
-import { Theme } from "theme.slint";
+import { Theme, Lang } from "theme.slint";
 import { Btn, LineInput, Combo, Check, Radio, Spin, ScrollArea } from "widgets.slint";
 import { Settings } from "settings_state.slint";
 import { Download } from "download_state.slint";
@@ -81,14 +81,10 @@ component RadioRow inherits HorizontalLayout {
 }
 
 export component SettingsPage inherits Rectangle {
-    // login, network, file, advanced
+    // general, login, network, file, advanced
     in property <string> page;
 
-    property <string> title: page == "login" ? "로그인" : page == "network" ? "네트워크" : page == "file" ? "파일" : "고급";
-    property <string> description: page == "login" ? "로그인이 필요한 영상은 브라우저 쿠키로 다운로드"
-        : page == "network" ? "연결과 다운로드 속도"
-        : page == "file" ? "저장 위치와 파일 이름"
-        : "yt-dlp 명령줄 옵션. 다른 설정보다 우선 적용";
+    property <string> title: page == "general" ? (Lang.en ? "General" : "일반") : page == "login" ? (Lang.en ? "Login" : "로그인") : page == "network" ? (Lang.en ? "Network" : "네트워크") : page == "file" ? (Lang.en ? "Files" : "파일") : (Lang.en ? "Advanced" : "고급");
 
     ScrollArea {
         content-height: body.min-height;
@@ -116,19 +112,12 @@ export component SettingsPage inherits Rectangle {
                         }
                     }
                     Text {
-                        text: "저장됨";
+                        text: (Lang.en ? "Saved" : "저장됨");
                         color: Theme.success;
                         font-size: 12px;
                         vertical-alignment: center;
                     }
                 }
-            }
-            Rectangle { height: 4px; }
-            Text {
-                text: root.description;
-                color: Theme.muted;
-                font-size: 12px;
-                wrap: word-wrap;
             }
             Rectangle { height: 16px; }
 
@@ -144,14 +133,14 @@ export component SettingsPage inherits Rectangle {
 
                     // ---------- 로그인 ----------
                     if page == "login": RadioRow {
-                        text: "사용 안 함";
+                        text: (Lang.en ? "Off" : "사용 안 함");
                         checked: Settings.cookies == 0;
                         clicked => { Settings.cookies = 0; Settings.commit("cookies"); }
                     }
                     if page == "login": RadioRow {
-                        text: "브라우저에서 가져오기";
+                        text: (Lang.en ? "From a browser" : "브라우저에서 가져오기");
                         checked: Settings.cookies == 1;
-                        hint: "Chrome·Edge는 실행 중이면 쿠키를 읽지 못할 수 있음";
+                        hint: (Lang.en ? "Chrome and Edge may block cookie access while running" : "Chrome·Edge는 실행 중이면 쿠키를 읽지 못할 수 있음");
                         clicked => { Settings.cookies = 1; Settings.commit("cookies"); }
                         HorizontalLayout {
                             alignment: start;
@@ -164,7 +153,7 @@ export component SettingsPage inherits Rectangle {
                         }
                     }
                     if page == "login": RadioRow {
-                        text: "cookies.txt 파일";
+                        text: (Lang.en ? "cookies.txt file" : "cookies.txt 파일");
                         checked: Settings.cookies == 2;
                         error: Settings.error-cookie-file;
                         clicked => { Settings.cookies = 2; Settings.commit("cookies"); }
@@ -173,7 +162,7 @@ export component SettingsPage inherits Rectangle {
                             max-width: 400px;
                             LineInput {
                                 height: 30px;
-                                placeholder: "파일 선택";
+                                placeholder: (Lang.en ? "Choose a file" : "파일 선택");
                                 enabled: Settings.cookies == 2;
                                 invalid: Settings.error-cookie-file != "";
                                 text <=> Settings.cookie-file;
@@ -181,7 +170,7 @@ export component SettingsPage inherits Rectangle {
                                 left => { Settings.commit("cookies"); }
                             }
                             Btn {
-                                text: "찾기";
+                                text: (Lang.en ? "Browse" : "찾기");
                                 enabled: Settings.cookies == 2;
                                 clicked => { Settings.browse-cookie(); }
                             }
@@ -190,7 +179,7 @@ export component SettingsPage inherits Rectangle {
 
                     // ---------- 네트워크 ----------
                     if page == "network": Row {
-                        label: "프록시";
+                        label: (Lang.en ? "Proxy" : "프록시");
                         LineInput {
                             height: 30px;
                             max-width: 400px;
@@ -201,14 +190,14 @@ export component SettingsPage inherits Rectangle {
                         }
                     }
                     if page == "network": Row {
-                        label: "속도 제한";
-                        hint: "비우면 제한 없음. 5M = 초당 5MB";
+                        label: (Lang.en ? "Speed limit" : "속도 제한");
+                        hint: (Lang.en ? "Empty means no limit. 5M = 5 MB/s" : "비우면 제한 없음. 5M = 초당 5MB");
                         error: Settings.error-rate-limit;
                         HorizontalLayout {
                             alignment: start;
                             LineInput {
                                 width: 160px; height: 30px;
-                                placeholder: "예: 5M";
+                                placeholder: (Lang.en ? "e.g. 5M" : "예: 5M");
                                 invalid: Settings.error-rate-limit != "";
                                 text <=> Settings.rate-limit;
                                 accepted => { Settings.commit("rate_limit"); }
@@ -217,7 +206,7 @@ export component SettingsPage inherits Rectangle {
                         }
                     }
                     if page == "network": Row {
-                        label: "재시도 횟수";
+                        label: (Lang.en ? "Retries" : "재시도 횟수");
                         HorizontalLayout {
                             alignment: start;
                             Spin {
@@ -228,8 +217,8 @@ export component SettingsPage inherits Rectangle {
                         }
                     }
                     if page == "network": Row {
-                        label: "동시 다운로드";
-                        hint: "동시에 받는 영상 수 (1~5)";
+                        label: (Lang.en ? "Parallel" : "동시 다운로드");
+                        hint: (Lang.en ? "Videos downloaded at once (1–5)" : "동시에 받는 영상 수 (1~5)");
                         HorizontalLayout {
                             alignment: start;
                             Spin {
@@ -242,7 +231,7 @@ export component SettingsPage inherits Rectangle {
 
                     // ---------- 파일 ----------
                     if page == "file": Row {
-                        label: "저장 위치";
+                        label: (Lang.en ? "Save to" : "저장 위치");
                         HorizontalLayout {
                             spacing: 6px;
                             LineInput {
@@ -250,25 +239,25 @@ export component SettingsPage inherits Rectangle {
                                 text: Download.folder;
                                 read-only: true;
                             }
-                            Btn { text: "변경"; clicked => { Download.pick-folder(); } }
-                            Btn { text: "폴더 열기"; clicked => { Download.open-folder(); } }
+                            Btn { text: (Lang.en ? "Change" : "변경"); clicked => { Download.pick-folder(); } }
+                            Btn { text: (Lang.en ? "Open folder" : "폴더 열기"); clicked => { Download.open-folder(); } }
                         }
                     }
                     if page == "file": Row {
-                        label: "파일 이름";
+                        label: (Lang.en ? "File name" : "파일 이름");
                         HorizontalLayout {
                             alignment: start;
                             Combo {
                                 width: 170px;
-                                model: ["제목", "제목 [ID]", "업로더 - 제목", "날짜 제목", "직접 입력"];
+                                model: [(Lang.en ? "Title" : "제목"), (Lang.en ? "Title [ID]" : "제목 [ID]"), (Lang.en ? "Uploader - Title" : "업로더 - 제목"), (Lang.en ? "Date Title" : "날짜 제목"), (Lang.en ? "Custom" : "직접 입력")];
                                 current-index <=> Settings.name-template;
                                 selected => { Settings.commit("template"); }
                             }
                         }
                     }
                     if page == "file": Row {
-                        label: "직접 입력";
-                        hint: "yt-dlp 출력 템플릿 문법";
+                        label: (Lang.en ? "Custom" : "직접 입력");
+                        hint: (Lang.en ? "yt-dlp output template syntax" : "yt-dlp 출력 템플릿 문법");
                         error: Settings.error-custom-template;
                         LineInput {
                             height: 30px;
@@ -282,11 +271,11 @@ export component SettingsPage inherits Rectangle {
                     }
                     if page == "file": Row {
                         label: "";
-                        hint: "끄면 '제목 (1).mp4'처럼 번호를 붙여 저장";
+                        hint: (Lang.en ? "When off, saves with a number, like 'Title (1).mp4'" : "끄면 '제목 (1).mp4'처럼 번호를 붙여 저장");
                         HorizontalLayout {
                             alignment: start;
                             Check {
-                                text: "같은 이름의 파일이 있으면 덮어쓰기";
+                                text: (Lang.en ? "Overwrite files with the same name" : "같은 이름의 파일이 있으면 덮어쓰기");
                                 checked <=> Settings.overwrite;
                                 toggled => { Settings.commit("overwrite"); }
                             }
@@ -294,13 +283,25 @@ export component SettingsPage inherits Rectangle {
                     }
 
                     // ---------- 고급 ----------
+                    if page == "general": Row {
+                        label: Lang.en ? "Language" : "언어";
+                        HorizontalLayout {
+                            alignment: start;
+                            Combo {
+                                width: 170px;
+                                model: ["한국어", "English"];
+                                current-index <=> Settings.language;
+                                selected => { Settings.set-language(Settings.language); }
+                            }
+                        }
+                    }
                     if page == "advanced": Row {
-                        label: "yt-dlp 옵션";
+                        label: (Lang.en ? "yt-dlp options" : "yt-dlp 옵션");
                         error: Settings.error-extra-args;
                         LineInput {
                             height: 30px;
                             max-width: 400px;
-                            placeholder: "예: --limit-rate 1M --no-mtime";
+                            placeholder: (Lang.en ? "e.g. --limit-rate 1M --no-mtime" : "예: --limit-rate 1M --no-mtime");
                             invalid: Settings.error-extra-args != "";
                             text <=> Settings.extra-args;
                             accepted => { Settings.commit("extra_args"); }

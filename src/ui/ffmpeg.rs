@@ -37,13 +37,13 @@ pub fn banner(state: &FfmpegState) -> Banner {
     match state {
         FfmpegState::Looking | FfmpegState::Ready => Banner::default(),
         FfmpegState::Fetching(percent) => Banner {
-            text: "ffmpeg 세팅중...".to_string(),
+            text: crate::lang::tr("ffmpeg 세팅중...", "Setting up ffmpeg...").to_string(),
             percent: percent.map(|p| format!("{}%", p.min(100))).unwrap_or_default(),
             progress: Some(percent.map_or(0.0, |p| f32::from(p.min(100)) / 100.0)),
             ..Banner::default()
         },
         FfmpegState::Failed(message) => {
-            Banner { text: "ffmpeg 세팅 실패".to_string(), detail: message.clone(), error: true, retry: true, ..Banner::default() }
+            Banner { text: crate::lang::tr("ffmpeg 세팅 실패", "ffmpeg setup failed").to_string(), detail: message.clone(), error: true, retry: true, ..Banner::default() }
         }
     }
 }

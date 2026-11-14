@@ -20,14 +20,17 @@ export struct CardView {
     // 목록에서 빠지는 중: 접히며 흐려진다
     leaving: bool,
 }
+import { Lang } from "theme.slint";
 
 export global Download {
     in-out property <string> url;
-    in property <string> url-placeholder: "링크 붙여넣기";
+    in property <string> url-placeholder: (Lang.en ? "Paste a link" : "링크 붙여넣기");
     // 지금 값과 같은 프리셋: "best", "720p", "mp3", 없으면 ""
     in property <string> preset;
     // "세부 옵션 · 자막, 구간" 처럼 기본값과 달라진 항목을 붙인 글
-    in property <string> more-text: "세부 옵션";
+    in property <string> more-text: (Lang.en ? "Options" : "세부 옵션");
+    // 기본값에서 바꿔 둔 세부 옵션이 있다
+    in property <bool> more-changed;
     // 사용자가 저장한 프리셋의 이름들과, 지금 값과 같은 것의 자리(없으면 -1)
     in property <[string]> user-presets;
     in property <int> user-preset: -1;
@@ -40,6 +43,9 @@ export global Download {
     // 받고 있는 것이 있다: 바닥에서 빛이 번진다(toast.slint)
     in property <bool> glow;
     // 변환 도구(ffmpeg)를 받는 동안 떠 있는 바(toast.slint). 빈 글이면 보이지 않는다.
+    // 잠깐 뜨는 알약 알림. 내려가는 동안에도 글은 남는다.
+    in property <string> notice;
+    in property <bool> notice-shown;
     in property <string> tool-text;
     // 보일지. 사라지는 동안에도 글은 남겨 둔다.
     in property <bool> tool-shown;

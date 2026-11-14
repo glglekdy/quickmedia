@@ -42,10 +42,10 @@ pub fn to_json(list: &[UserPreset]) -> String {
 pub fn save(list: &mut Vec<UserPreset>, name: &str, opts: &DownloadOptions) -> Result<(), String> {
     let name = name.trim();
     if name.is_empty() {
-        return Err("프리셋 이름을 입력하세요".to_string());
+        return Err(crate::lang::tr("프리셋 이름을 입력하세요", "Enter a preset name").to_string());
     }
     if name.chars().count() > MAX_NAME_CHARS {
-        return Err(format!("이름은 최대 {MAX_NAME_CHARS}자"));
+        return Err(crate::trf!("이름은 최대 {MAX_NAME_CHARS}자", "Name can be up to {MAX_NAME_CHARS} characters"));
     }
     let preset = UserPreset { name: name.to_string(), opts: opts.clone() };
     if let Some(existing) = list.iter_mut().find(|p| p.name == name) {
@@ -53,7 +53,7 @@ pub fn save(list: &mut Vec<UserPreset>, name: &str, opts: &DownloadOptions) -> R
         return Ok(());
     }
     if list.len() >= MAX_PRESETS {
-        return Err(format!("프리셋은 최대 {MAX_PRESETS}개"));
+        return Err(crate::trf!("프리셋은 최대 {MAX_PRESETS}개", "Up to {MAX_PRESETS} presets"));
     }
     list.push(preset);
     Ok(())

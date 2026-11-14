@@ -51,7 +51,7 @@ impl AppUpdate {
 
 /// 업데이트하면 앱이 꺼지므로 받고 있거나 기다리는 영상이 있으면 묻는다.
 pub fn confirm_question(active_jobs: usize) -> Option<String> {
-    (active_jobs > 0).then(|| format!("다운로드 {active_jobs}개가 중단됩니다. 업데이트할까요?"))
+    (active_jobs > 0).then(|| crate::trf!("다운로드 {active_jobs}개가 중단됩니다. 업데이트할까요?", "{active_jobs} downloads will stop. Update now?"))
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -82,37 +82,37 @@ pub fn app_view(state: &AppUpdate, can_self_update: bool) -> UpdateView {
         ..Default::default()
     };
     match state {
-        AppUpdate::Idle => base("확인 전", "", "업데이트 확인"),
-        AppUpdate::Checking => UpdateView { enabled: false, ..base("확인하는 중…", "최신 버전 확인 중", "업데이트 확인") },
-        AppUpdate::UpToDate { at } => base("최신 버전", &format!("{at} 확인"), "업데이트 확인"),
-        AppUpdate::CheckFailed(message) => UpdateView { sub_error: true, ..base("확인 실패", message, "다시 확인") },
+        AppUpdate::Idle => base(crate::lang::tr("확인 전", "Not checked yet"), "", crate::lang::tr("업데이트 확인", "Check for updates")),
+        AppUpdate::Checking => UpdateView { enabled: false, ..base(crate::lang::tr("확인하는 중…", "Checking…"), crate::lang::tr("최신 버전 확인 중", "Looking for the latest version"), crate::lang::tr("업데이트 확인", "Check for updates")) },
+        AppUpdate::UpToDate { at } => base(crate::lang::tr("최신 버전", "Up to date"), &crate::trf!("{at} 확인", "Checked {at}"), crate::lang::tr("업데이트 확인", "Check for updates")),
+        AppUpdate::CheckFailed(message) => UpdateView { sub_error: true, ..base(crate::lang::tr("확인 실패", "Check failed"), message, crate::lang::tr("다시 확인", "Check again")) },
         AppUpdate::Available { release, phase } => {
             let mut view = UpdateView {
                 primary: true,
                 notes: if release.notes.trim().is_empty() { Vec::new() } else { note_lines(&release.notes) },
-                ..base(&format!("새 버전 {}", release.version), "", "지금 업데이트")
+                ..base(&crate::trf!("새 버전 {}", "New version {}", release.version), "", crate::lang::tr("지금 업데이트", "Update now"))
             };
             match phase {
                 Phase::Ready if can_self_update => {
-                    view.status = "설치 후 QuickMedia가 다시 시작됨".to_string();
+                    view.status = crate::lang::tr("설치 후 QuickMedia가 다시 시작됨", "QuickMedia restarts after installing").to_string();
                 }
                 Phase::Ready => {
                     view.enabled = false;
-                    view.status = "개발용 빌드에서는 자동 업데이트 불가".to_string();
+                    view.status = crate::lang::tr("개발용 빌드에서는 자동 업데이트 불가", "Dev builds can't update themselves").to_string();
                 }
                 Phase::Downloading(percent) => {
                     view.enabled = false;
-                    view.status = percent.map_or("받는 중…".to_string(), |p| format!("받는 중… {p}%"));
+                    view.status = percent.map_or(crate::lang::tr("받는 중…", "Downloading…").to_string(), |p| crate::trf!("받는 중… {p}%", "Downloading… {p}%"));
                     view.progress = Some(percent.map_or(0.0, |p| f32::from(p) / 100.0));
                 }
                 Phase::Failed(message) => {
-                    view.button = "다시 시도".to_string();
+                    view.button = crate::lang::tr("다시 시도", "Try again").to_string();
                     view.status = message.clone();
                     view.status_error = true;
                 }
                 Phase::Restarting => {
                     view.enabled = false;
-                    view.status = "다시 시작하는 중…".to_string();
+                    view.status = crate::lang::tr("다시 시작하는 중…", "Restarting…").to_string();
                 }
             }
             view
@@ -146,14 +146,14 @@ pub struct YtdlpView {
 pub fn ytdlp_view(current: Option<&str>, state: &YtdlpUpdate) -> YtdlpView {
     let status = match state {
         YtdlpUpdate::Idle => String::new(),
-        YtdlpUpdate::Checking => "확인하는 중…".to_string(),
-        YtdlpUpdate::Downloading(percent) => format!("받는 중… {percent}%"),
-        YtdlpUpdate::UpToDate => "최신".to_string(),
-        YtdlpUpdate::Updated(version) => format!("{version} 갱신 완료"),
+        YtdlpUpdate::Checking => crate::lang::tr("확인하는 중…", "Checking…").to_string(),
+        YtdlpUpdate::Downloading(percent) => crate::trf!("받는 중… {percent}%", "Downloading… {percent}%"),
+        YtdlpUpdate::UpToDate => crate::lang::tr("최신", "Up to date").to_string(),
+        YtdlpUpdate::Updated(version) => crate::trf!("{version} 갱신 완료", "Updated to {version}"),
         YtdlpUpdate::Failed(message) => message.clone(),
     };
     YtdlpView {
-        version: current.unwrap_or("찾을 수 없음").to_string(),
+        version: current.unwrap_or(crate::lang::tr("찾을 수 없음", "Not found")).to_string(),
         status,
         status_error: matches!(state, YtdlpUpdate::Failed(_)),
         enabled: !matches!(state, YtdlpUpdate::Checking | YtdlpUpdate::Downloading(_)),

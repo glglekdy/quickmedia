@@ -1,6 +1,6 @@
 [package]
 name = "quickmedia"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2021"
 description = "QuickMedia"
 publish = false
@@ -23,7 +23,7 @@ ureq = { version = "2", default-features = false, features = ["native-tls"] }
 native-tls = "0.2"
 image = { version = "0.25", default-features = false, features = ["ico", "png", "jpeg", "gif", "bmp"] }
 winreg = "0.55"
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_SystemInformation"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_SystemInformation", "Win32_Globalization"] }
 # zip 풀기만 쓴다(ffmpeg 받기). deflate 는 image 가 이미 쓰는 flate2 로.
 zip = { version = "9.5.1", default-features = false, features = ["deflate-flate2"] }
 flate2 = "1"
@@ -32,9 +32,20 @@ flate2 = "1"
 slint-build = "1.18"
 winresource = "0.1"
 
+# 화면을 CPU 로 그리므로, 개발 빌드에서도 의존 크레이트는 최적화해 둔다(안 하면 움직임이 끊긴다)
+[profile.dev.package."*"]
+opt-level = 3
+
 [profile.release]
 opt-level = "s"
 lto = true
 codegen-units = 1
 strip = true
 panic = "unwind"
+
+# 그리는 쪽만 크기보다 속도를 우선한다
+[profile.release.package.i-slint-renderer-software]
+opt-level = 3
+
+[profile.release.package.i-slint-core]
+opt-level = 3

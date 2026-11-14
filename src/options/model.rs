@@ -159,9 +159,9 @@ stored_struct! {
 
 pub fn preset_label(key: &str) -> &'static str {
     match key {
-        "best" => "최고 화질",
+        "best" => crate::lang::tr("최고 화질", "Best quality"),
         "720p" => "720p",
-        "mp3" => "MP3 음원",
+        "mp3" => crate::lang::tr("MP3 음원", "MP3 audio"),
         _ => "",
     }
 }
@@ -183,6 +183,19 @@ pub fn apply_preset(opts: &DownloadOptions, key: &str) -> DownloadOptions {
         }
         _ => {}
     }
+    o
+}
+
+/// 프리셋이 정하는 형식 값만 기본값으로 되돌린다.
+pub fn clear_preset(opts: &DownloadOptions) -> DownloadOptions {
+    let base = DownloadOptions::default();
+    let mut o = opts.clone();
+    o.kind = base.kind;
+    o.quality = base.quality;
+    o.container = base.container;
+    o.codec = base.codec;
+    o.audio_format = base.audio_format;
+    o.audio_quality = base.audio_quality;
     o
 }
 
@@ -218,18 +231,18 @@ pub fn describe(opts: &DownloadOptions) -> String {
         let mut t = opts.audio_format.to_uppercase();
         if !LOSSLESS.contains(&opts.audio_format.as_str()) {
             if opts.audio_quality == "best" {
-                t.push_str(" · 최고 음질");
+                t.push_str(crate::lang::tr(" · 최고 음질", " · best quality"));
             } else {
                 t.push_str(&format!(" · {}k", opts.audio_quality));
             }
         }
         t
     } else {
-        let quality = if opts.quality == "best" { "최고 화질".to_string() } else { format!("{}p", opts.quality) };
+        let quality = if opts.quality == "best" { crate::lang::tr("최고 화질", "Best quality").to_string() } else { format!("{}p", opts.quality) };
         format!("{quality} · {}", opts.container.to_uppercase())
     };
     if opts.subs {
-        text.push_str(" · 자막");
+        text.push_str(crate::lang::tr(" · 자막", " · subtitles"));
     }
     text
 }
@@ -237,14 +250,14 @@ pub fn describe(opts: &DownloadOptions) -> String {
 /// 세부 옵션 버튼에 붙일, 기본값과 달라진 항목.
 pub fn changed_summary(opts: &DownloadOptions) -> Vec<&'static str> {
     let checks = [
-        ("형식", matching_preset(opts).is_none()),
-        ("자막", opts.subs),
-        ("썸네일", opts.embed_thumbnail || opts.save_thumbnail),
-        ("메타데이터", opts.embed_metadata),
-        ("챕터", opts.embed_chapters || opts.split_chapters),
-        ("구간", !opts.section_start.is_empty() || !opts.section_end.is_empty()),
+        (crate::lang::tr("형식", "format"), matching_preset(opts).is_none()),
+        (crate::lang::tr("자막", "subtitles"), opts.subs),
+        (crate::lang::tr("썸네일", "thumbnail"), opts.embed_thumbnail || opts.save_thumbnail),
+        (crate::lang::tr("메타데이터", "metadata"), opts.embed_metadata),
+        (crate::lang::tr("챕터", "chapters"), opts.embed_chapters || opts.split_chapters),
+        (crate::lang::tr("구간", "section"), !opts.section_start.is_empty() || !opts.section_end.is_empty()),
         (
-            "재생목록",
+            crate::lang::tr("재생목록", "playlist"),
             opts.playlist == "all"
                 || !opts.playlist_items.is_empty()
                 || opts.number_prefix
@@ -352,6 +365,15 @@ mod tests {
         assert_eq!(describe(&opts(|o| { o.kind = "audio".into(); o.audio_format = "opus".into(); o.audio_quality = "best".into() })),
                    "OPUS · 최고 음질");
         assert_eq!(describe(&opts(|o| o.subs = true)), "최고 화질 · MP4 · 자막");
+    }
+
+    #[test]
+    fn clearing_a_preset_resets_only_the_format() {
+        let mut o = apply_preset(&DownloadOptions::default(), "mp3");
+        o.subs = true;
+        let cleared = clear_preset(&o);
+        assert!(cleared.subs);
+        assert_eq!(cleared, DownloadOptions { subs: true, ..DownloadOptions::default() });
     }
 
     #[test]

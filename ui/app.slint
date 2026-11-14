@@ -1,5 +1,5 @@
 // 메인 창: 화면(다운로드 목록 · 설정 탭들) 위로, 아래에 링크 칸과 독이 떠 있다.
-import { Theme } from "theme.slint";
+import { Theme, Lang } from "theme.slint";
 import { Ui } from "widgets.slint";
 import { NavDock, Nav } from "sidebar.slint";
 import { Download, CardView } from "download_state.slint";
@@ -11,7 +11,7 @@ import { UpdatePage } from "update.slint";
 import { ToolDock, Glow } from "toast.slint";
 import { Composer, OptionsCard, PresetCard } from "composer.slint";
 
-export { Theme, Nav, Download, CardView, Settings, Update, NoteLineView }
+export { Theme, Lang, Nav, Download, CardView, Settings, Update, NoteLineView }
 
 // 설정 쪽 화면 하나
 component TabView inherits Rectangle {
@@ -69,7 +69,7 @@ export component AppWindow inherits Window {
     property <length> slide: 56px;
 
     pure function order(key: string) -> int {
-        key == "download" ? 0 : key == "login" ? 1 : key == "network" ? 2 : key == "file" ? 3 : key == "advanced" ? 4 : 5
+        key == "download" ? 0 : key == "general" ? 1 : key == "login" ? 2 : key == "network" ? 3 : key == "file" ? 4 : key == "advanced" ? 5 : 6
     }
     changed page => {
         if root.page != root.shown {
@@ -98,6 +98,9 @@ export component AppWindow inherits Window {
     }
     property <float> error-rise: root.error != "" && !root.in-settings && !root.popups-open ? 1 : 0;
     animate error-rise { duration: 320ms; easing: cubic-bezier(0.34, 1.36, 0.64, 1); }
+
+    property <float> notice-rise: Download.notice-shown && !root.in-settings ? 1 : 0;
+    animate notice-rise { duration: 320ms; easing: cubic-bezier(0.34, 1.36, 0.64, 1); }
 
     // 받기 버튼에서 날아가는 동그라미
     property <bool> flying;
@@ -151,13 +154,13 @@ export component AppWindow inherits Window {
         active: Download.glow;
     }
 
-    OptionsCard {
+    options-card := OptionsCard {
         shown: Download.panel-open;
         bottom: composer.y - 10px;
         x: root.side;
         width: parent.width - 2 * root.side;
     }
-    PresetCard {
+    preset-card := PresetCard {
         shown: composer.preset-open;
         bottom: composer.y - 10px;
         x: min(composer.x + composer.preset-x, parent.width - self.width - root.side);
@@ -181,6 +184,33 @@ export component AppWindow inherits Window {
             font-size: 12px;
             vertical-alignment: center;
             overflow: elide;
+        }
+    }
+    // 알약 알림: 떠 있는 것들 중 맨 위의 것 바로 위, 가운데
+    Rectangle {
+        property <length> anchor: Download.panel-open ? options-card.y : composer.preset-open ? preset-card.y : composer.y;
+        visible: root.notice-rise > 0.01;
+        opacity: clamp(root.notice-rise, 0, 1);
+        width: note.preferred-width + 44px;
+        height: 30px;
+        x: (parent.width - self.width) / 2;
+        y: self.anchor - self.height - 10px + (1 - root.notice-rise) * 16px;
+        border-radius: 15px;
+        background: Theme.popup-bg;
+        border-width: 1px;
+        border-color: Theme.border;
+        Rectangle {
+            x: 13px; y: 12px; width: 6px; height: 6px;
+            border-radius: 3px;
+            background: Theme.accent;
+        }
+        note := Text {
+            x: 27px; height: parent.height;
+            text: Download.notice;
+            color: Theme.text;
+            font-size: 12px;
+            font-weight: 500;
+            vertical-alignment: center;
         }
     }
     if Download.tool-text != "": ToolDock {

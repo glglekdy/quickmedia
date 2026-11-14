@@ -1,5 +1,5 @@
 // 업데이트 화면: 앱 업데이트 카드와 yt-dlp 갱신 카드.
-import { Theme } from "theme.slint";
+import { Theme, Lang } from "theme.slint";
 import { Btn, Bar, ScrollArea } from "widgets.slint";
 import { Update } from "update_state.slint";
 
@@ -23,7 +23,7 @@ export component UpdatePage inherits Rectangle {
             alignment: start;
 
             Text {
-                text: "업데이트";
+                text: (Lang.en ? "Update" : "업데이트");
                 color: Theme.heading;
                 font-size: 22px;
                 font-weight: 600;
@@ -112,7 +112,7 @@ export component UpdatePage inherits Rectangle {
                         font-weight: 600;
                     }
                     Text {
-                        text: "다운로드 엔진. 다운로드가 안 되면 갱신";
+                        text: (Lang.en ? "The download engine. Update it if downloads fail" : "다운로드 엔진. 다운로드가 안 되면 갱신");
                         color: Theme.muted;
                         font-size: 12px;
                         wrap: word-wrap;
@@ -123,7 +123,7 @@ export component UpdatePage inherits Rectangle {
                     VerticalLayout {
                         alignment: center;
                         Btn {
-                            text: "갱신";
+                            text: (Lang.en ? "Update" : "갱신");
                             enabled: Update.ytdlp-enabled;
                             clicked => { Update.ytdlp-action(); }
                         }

@@ -1,6 +1,6 @@
 // 펼치는 "세부 옵션" 패널: 형식 / 자막 / 후처리 / 재생목록.
 // 값은 Download 전역에 있고, 바뀌면 Download.options-edited() 로 알린다.
-import { Theme } from "theme.slint";
+import { Theme, Lang } from "theme.slint";
 import { Check, Radio, Combo, LineInput, FormRow } from "widgets.slint";
 import { Download } from "download_state.slint";
 
@@ -41,10 +41,10 @@ export component OptionsPanel inherits VerticalLayout {
 
     HorizontalLayout {
         alignment: start;
-        Tab { text: "형식"; selected: tab == 0; clicked => { tab = 0; } }
-        Tab { text: "자막"; selected: tab == 1; clicked => { tab = 1; } }
-        Tab { text: "후처리"; selected: tab == 2; clicked => { tab = 2; } }
-        Tab { text: "재생목록"; selected: tab == 3; clicked => { tab = 3; } }
+        Tab { text: (Lang.en ? "Format" : "형식"); selected: tab == 0; clicked => { tab = 0; } }
+        Tab { text: (Lang.en ? "Subtitles" : "자막"); selected: tab == 1; clicked => { tab = 1; } }
+        Tab { text: (Lang.en ? "Post-processing" : "후처리"); selected: tab == 2; clicked => { tab = 2; } }
+        Tab { text: (Lang.en ? "Playlist" : "재생목록"); selected: tab == 3; clicked => { tab = 3; } }
     }
     Rectangle {
         background: Theme.card-bg;
@@ -67,19 +67,19 @@ export component OptionsPanel inherits VerticalLayout {
             if tab == 0: HorizontalLayout {
                 spacing: 16px;
                 alignment: start;
-                Radio { text: "영상"; checked: !audio; clicked => { Download.kind-audio = false; Download.options-edited(); } }
-                Radio { text: "음원만"; checked: audio; clicked => { Download.kind-audio = true; Download.options-edited(); } }
+                Radio { text: (Lang.en ? "Video" : "영상"); checked: !audio; clicked => { Download.kind-audio = false; Download.options-edited(); } }
+                Radio { text: (Lang.en ? "Audio only" : "음원만"); checked: audio; clicked => { Download.kind-audio = true; Download.options-edited(); } }
             }
             if tab == 0 && !audio: FormRow {
-                label: "화질"; alignment: start;
+                label: (Lang.en ? "Quality" : "화질"); alignment: start;
                 Combo {
-                    model: ["최고", "2160p", "1440p", "1080p", "720p", "480p", "360p"];
+                    model: [(Lang.en ? "Best" : "최고"), "2160p", "1440p", "1080p", "720p", "480p", "360p"];
                     current-index <=> Download.quality;
                     selected => { Download.options-edited(); }
                 }
             }
             if tab == 0 && !audio: FormRow {
-                label: "파일 형식"; alignment: start;
+                label: (Lang.en ? "Container" : "파일 형식"); alignment: start;
                 Combo {
                     model: ["MP4", "MKV", "WEBM"];
                     current-index <=> Download.container;
@@ -87,16 +87,16 @@ export component OptionsPanel inherits VerticalLayout {
                 }
             }
             if tab == 0 && !audio: FormRow {
-                label: "코덱"; alignment: start;
+                label: (Lang.en ? "Codec" : "코덱"); alignment: start;
                 Combo {
                     width: 190px;
-                    model: ["자동", "H.264 (호환성 좋음)", "VP9", "AV1"];
+                    model: [(Lang.en ? "Auto" : "자동"), (Lang.en ? "H.264 (most compatible)" : "H.264 (호환성 좋음)"), "VP9", "AV1"];
                     current-index <=> Download.codec;
                     selected => { Download.options-edited(); }
                 }
             }
             if tab == 0 && audio: FormRow {
-                label: "형식"; alignment: start;
+                label: (Lang.en ? "Format" : "형식"); alignment: start;
                 Combo {
                     model: ["MP3", "M4A", "OPUS", "FLAC", "WAV"];
                     current-index <=> Download.audio-format;
@@ -104,9 +104,9 @@ export component OptionsPanel inherits VerticalLayout {
                 }
             }
             if tab == 0 && audio: FormRow {
-                label: "음질"; alignment: start;
+                label: (Lang.en ? "Bitrate" : "음질"); alignment: start;
                 Combo {
-                    model: ["최고", "320k", "192k", "128k"];
+                    model: [(Lang.en ? "Best" : "최고"), "320k", "192k", "128k"];
                     // 무손실 형식은 음질을 고를 수 없다
                     enabled: Download.audio-format < 3;
                     current-index <=> Download.audio-quality;
@@ -117,12 +117,12 @@ export component OptionsPanel inherits VerticalLayout {
             // ---------- 자막 ----------
             if tab == 1: HorizontalLayout {
                 alignment: start;
-                Check { text: "자막 받기"; checked <=> Download.subs; toggled => { Download.options-edited(); } }
+                Check { text: (Lang.en ? "Download subtitles" : "자막 받기"); checked <=> Download.subs; toggled => { Download.options-edited(); } }
             }
             if tab == 1: FormRow {
-                label: "언어";
+                label: (Lang.en ? "Language" : "언어");
                 Combo {
-                    model: ["한국어", "영어", "모든 언어", "직접 입력"];
+                    model: [(Lang.en ? "Korean" : "한국어"), (Lang.en ? "English" : "영어"), (Lang.en ? "All languages" : "모든 언어"), (Lang.en ? "Custom" : "직접 입력")];
                     enabled: Download.subs;
                     current-index <=> Download.sub-lang;
                     selected => { Download.options-edited(); }
@@ -139,15 +139,15 @@ export component OptionsPanel inherits VerticalLayout {
             }
             if tab == 1: FormRow {
                 label: ""; alignment: start;
-                Check { text: "자동 생성 자막 포함"; enabled: Download.subs; checked <=> Download.auto-subs; toggled => { Download.options-edited(); } }
+                Check { text: (Lang.en ? "Include auto-generated subtitles" : "자동 생성 자막 포함"); enabled: Download.subs; checked <=> Download.auto-subs; toggled => { Download.options-edited(); } }
             }
             if tab == 1: FormRow {
-                label: "저장 방식"; alignment: start; spacing: 16px;
-                Radio { text: "영상 파일 안에 넣기"; enabled: Download.subs; checked: !Download.sub-file; clicked => { Download.sub-file = false; Download.options-edited(); } }
-                Radio { text: "별도 파일"; enabled: Download.subs; checked: Download.sub-file; clicked => { Download.sub-file = true; Download.options-edited(); } }
+                label: (Lang.en ? "Save as" : "저장 방식"); alignment: start; spacing: 16px;
+                Radio { text: (Lang.en ? "Embed in the video" : "영상 파일 안에 넣기"); enabled: Download.subs; checked: !Download.sub-file; clicked => { Download.sub-file = false; Download.options-edited(); } }
+                Radio { text: (Lang.en ? "Separate file" : "별도 파일"); enabled: Download.subs; checked: Download.sub-file; clicked => { Download.sub-file = true; Download.options-edited(); } }
             }
             if tab == 1: FormRow {
-                label: "자막 형식"; alignment: start;
+                label: (Lang.en ? "Format" : "자막 형식"); alignment: start;
                 Combo {
                     model: ["SRT", "VTT", "ASS"];
                     enabled: Download.subs && Download.sub-file;
@@ -160,16 +160,16 @@ export component OptionsPanel inherits VerticalLayout {
             if tab == 2: VerticalLayout {
                 spacing: 4px;
                 alignment: start;
-                HorizontalLayout { alignment: start; Check { text: "썸네일을 파일에 넣기"; checked <=> Download.embed-thumbnail; toggled => { Download.options-edited(); } } }
-                HorizontalLayout { alignment: start; Check { text: "썸네일을 이미지 파일로도 저장"; checked <=> Download.save-thumbnail; toggled => { Download.options-edited(); } } }
-                HorizontalLayout { alignment: start; Check { text: "제목·업로더 같은 메타데이터 넣기"; checked <=> Download.embed-metadata; toggled => { Download.options-edited(); } } }
-                HorizontalLayout { alignment: start; Check { text: "챕터 정보 넣기"; checked <=> Download.embed-chapters; toggled => { Download.options-edited(); } } }
-                HorizontalLayout { alignment: start; Check { text: "챕터별로 파일 나누기"; checked <=> Download.split-chapters; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: (Lang.en ? "Embed thumbnail" : "썸네일을 파일에 넣기"); checked <=> Download.embed-thumbnail; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: (Lang.en ? "Also save thumbnail as an image" : "썸네일을 이미지 파일로도 저장"); checked <=> Download.save-thumbnail; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: (Lang.en ? "Embed metadata (title, uploader)" : "제목·업로더 같은 메타데이터 넣기"); checked <=> Download.embed-metadata; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: (Lang.en ? "Embed chapters" : "챕터 정보 넣기"); checked <=> Download.embed-chapters; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: (Lang.en ? "Split into files by chapter" : "챕터별로 파일 나누기"); checked <=> Download.split-chapters; toggled => { Download.options-edited(); } } }
             }
             if tab == 2: HorizontalLayout {
                 spacing: 8px;
                 alignment: start;
-                Text { text: "구간만 받기"; vertical-alignment: center; color: Theme.text; }
+                Text { text: (Lang.en ? "Only a section" : "구간만 받기"); vertical-alignment: center; color: Theme.text; }
                 LineInput {
                     width: 90px; height: 30px;
                     placeholder: "1:30";
@@ -189,11 +189,11 @@ export component OptionsPanel inherits VerticalLayout {
             if tab == 3: HorizontalLayout {
                 spacing: 16px;
                 alignment: start;
-                Radio { text: "이 영상만"; checked: !Download.playlist-all; clicked => { Download.playlist-all = false; Download.options-edited(); } }
-                Radio { text: "재생목록 전체"; checked: Download.playlist-all; clicked => { Download.playlist-all = true; Download.options-edited(); } }
+                Radio { text: (Lang.en ? "This video only" : "이 영상만"); checked: !Download.playlist-all; clicked => { Download.playlist-all = false; Download.options-edited(); } }
+                Radio { text: (Lang.en ? "Whole playlist" : "재생목록 전체"); checked: Download.playlist-all; clicked => { Download.playlist-all = true; Download.options-edited(); } }
             }
             if tab == 3: FormRow {
-                label: "받을 범위";
+                label: (Lang.en ? "Items" : "받을 범위");
                 LineInput {
                     height: 30px;
                     max-width: 260px;
@@ -207,9 +207,9 @@ export component OptionsPanel inherits VerticalLayout {
             if tab == 3: VerticalLayout {
                 spacing: 4px;
                 alignment: start;
-                HorizontalLayout { alignment: start; Check { text: "파일 이름 앞에 번호 붙이기"; enabled: Download.playlist-all; checked <=> Download.number-prefix; toggled => { Download.options-edited(); } } }
-                HorizontalLayout { alignment: start; Check { text: "재생목록 이름으로 폴더 만들기"; enabled: Download.playlist-all; checked <=> Download.playlist-folder; toggled => { Download.options-edited(); } } }
-                HorizontalLayout { alignment: start; Check { text: "이미 받은 영상 건너뛰기"; checked <=> Download.skip-archived; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: (Lang.en ? "Number the file names" : "파일 이름 앞에 번호 붙이기"); enabled: Download.playlist-all; checked <=> Download.number-prefix; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: (Lang.en ? "Make a folder named after the playlist" : "재생목록 이름으로 폴더 만들기"); enabled: Download.playlist-all; checked <=> Download.playlist-folder; toggled => { Download.options-edited(); } } }
+                HorizontalLayout { alignment: start; Check { text: (Lang.en ? "Skip videos already downloaded" : "이미 받은 영상 건너뛰기"); checked <=> Download.skip-archived; toggled => { Download.options-edited(); } } }
             }
         }
     }

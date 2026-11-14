@@ -1,7 +1,7 @@
 // 화면 아래에 떠 있는 것들.
 // - ToolDock: ffmpeg 를 받는 동안 진행 상황을 보이는 떠 있는 바.
 // - Glow: 받는 동안 바닥에서 번지는 빛.
-import { Theme } from "theme.slint";
+import { Theme, Lang } from "theme.slint";
 import { Btn, Bar } from "widgets.slint";
 import { Download } from "download_state.slint";
 
@@ -11,10 +11,11 @@ export component Glow inherits Rectangle {
     // 어두운 바탕에서는 같은 알파가 묻힌다
     property <float> boost: Theme.dark ? 1.5 : 1;
     // 꺼져 있을 때는 시계를 보지 않아 다시 그리지 않는다
-    property <float> breath: root.active ? 0.86 - 0.14 * cos(360deg * mod(animation-tick(), 2.6s) / 2.6s) : 1;
+    // 한 주기를 40단계로 끊는다(초당 15번쯤). 매 프레임 넓은 그라데이션을 다시 그리면 버벅인다.
+    property <float> breath: root.active ? 0.86 - 0.14 * cos(360deg * floor(mod(animation-tick(), 2.6s) / 65ms) / 40) : 1;
     property <float> shown: 0;
 
-    height: 260px;
+    height: 220px;
     opacity: root.shown * root.breath;
     background: @linear-gradient(0deg,
         Theme.accent.with-alpha(0.26 * boost) 0%,
@@ -99,7 +100,7 @@ export component ToolDock inherits Rectangle {
             }
             if Download.tool-retry: VerticalLayout {
                 alignment: center;
-                Btn { text: "다시 시도"; clicked => { Download.retry-tool(); } }
+                Btn { text: (Lang.en ? "Try again" : "다시 시도"); clicked => { Download.retry-tool(); } }
             }
         }
     }

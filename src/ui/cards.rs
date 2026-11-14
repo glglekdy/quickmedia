@@ -24,9 +24,9 @@ pub fn is_finished(state: CardState) -> bool {
 }
 
 pub fn playlist_status(added: usize, skipped: u32) -> String {
-    let mut text = format!("영상 {added}개 추가");
+    let mut text = crate::trf!("영상 {added}개 추가", "{added} videos added");
     if skipped > 0 {
-        text.push_str(&format!(" · {skipped}개는 이미 받아서 건너뜀"));
+        text.push_str(&crate::trf!(" · {skipped}개는 이미 받아서 건너뜀", " · {skipped} already downloaded, skipped"));
     }
     text
 }
@@ -61,7 +61,7 @@ impl Card {
             host,
             title: url.to_string(),
             state: CardState::Waiting,
-            status: format!("{format} · 대기 중"),
+            status: crate::trf!("{format} · 대기 중", "{format} · Waiting"),
             percent: 0.0,
             path: String::new(),
         }
@@ -83,16 +83,16 @@ impl Card {
     pub fn set_started(&mut self) {
         self.state = CardState::Loading;
         self.percent = 0.0;
-        self.status = format!("{} · 영상 정보 불러오는 중…", self.format);
+        self.status = crate::trf!("{} · 영상 정보 불러오는 중…", "{} · Loading video info…", self.format);
     }
 
     pub fn set_cancelled(&mut self) {
         self.state = CardState::Cancelled;
-        self.status = "취소됨".to_string();
+        self.status = crate::lang::tr("취소됨", "Cancelled").to_string();
     }
 
     pub fn set_playlist(&mut self, title: &str, added: usize, skipped: u32) {
-        self.title = format!("재생목록 · {title}");
+        self.title = crate::trf!("재생목록 · {title}", "Playlist · {title}");
         self.state = CardState::Playlist;
         self.status = playlist_status(added, skipped);
     }
@@ -118,15 +118,15 @@ pub fn apply_event(card: &mut Card, event: &Event) {
             card.state = CardState::Done;
             card.percent = 100.0;
             card.path = path.clone();
-            card.status = format!("{} · 완료", card.format);
+            card.status = crate::trf!("{} · 완료", "{} · Done", card.format);
         }
         Event::Failed(message) => {
             card.state = CardState::Error;
-            card.status = format!("실패 · {message}");
+            card.status = crate::trf!("실패 · {message}", "Failed · {message}");
         }
         Event::Skipped => {
             card.state = CardState::Skipped;
-            card.status = "이미 받은 영상 · 건너뜀".to_string();
+            card.status = crate::lang::tr("이미 받은 영상 · 건너뜀", "Already downloaded · skipped").to_string();
         }
         Event::Expanded { .. } => {}
     }

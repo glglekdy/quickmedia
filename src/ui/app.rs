@@ -17,17 +17,17 @@ use super::settings::{ExtraStep, SettingsForm, ERROR_KEYS};
 pub use super::ffmpeg::FfmpegState;
 pub use super::update::Phase;
 use super::update::{app_view, confirm_question, ytdlp_view, Action, AppUpdate, YtdlpUpdate};
-use super::{nav, win, AppWindow, CardView, Download, Nav, NoteLineView, Settings, Update};
+use super::{nav, win, AppWindow, CardView, Download, Lang, Nav, NoteLineView, Settings, Update};
 use crate::app_info::{self, VERSION};
 use crate::options::{
-    apply_preset, changed_summary, matching_preset, options_from_map, options_to_map, settings_from_map,
+    apply_preset, changed_summary, clear_preset, matching_preset, options_from_map, options_to_map, settings_from_map,
     settings_to_map, AppSettings, DownloadOptions, AUDIO_FORMATS, AUDIO_QUALITIES, BROWSERS, CODECS, CONTAINERS,
     COOKIE_MODES, NAME_TEMPLATE_KEYS, QUALITIES, SUB_FORMATS,
 };
 use crate::site::{letter_of, IconPixels, SiteIcons};
 use crate::store::{read_group, write_group, KeyValue, Registry};
 use crate::ytdlp::{check_extra_args, run_job, Event, JobSpec, KillGroup, Tools};
-use crate::{ffmpeg, migrate, updater, ytdlp_update};
+use crate::{ffmpeg, lang, migrate, updater, ytdlp_update};
 
 /// 자막 언어 상자의 값. 마지막은 "직접 입력".
 const SUB_LANGS: [&str; 4] = ["ko", "en", "all", ""];
@@ -40,6 +40,8 @@ pub struct App {
     badge_timer: slint::Timer,
     /// 접히는 움직임이 끝난 카드를 빼는 타이머.
     remove_timer: slint::Timer,
+    /// 알약 알림을 내리는 타이머.
+    notice_timer: slint::Timer,
     cards: Rc<VecModel<CardView>>,
     pub store: RefCell<Registry>,
     pub tools: Arc<Mutex<Tools>>,
@@ -223,8 +225,9 @@ impl App {
         let opts = controller.options();
         dl.set_preset(matching_preset(opts).unwrap_or("").into());
         let changed = changed_summary(opts);
-        let text = if changed.is_empty() { "세부 옵션".to_string() } else { format!("세부 옵션 · {}", changed.join(", ")) };
+        let text = if changed.is_empty() { crate::lang::tr("세부 옵션", "Options").to_string() } else { crate::trf!("세부 옵션 · {}", "Options · {}", changed.join(", ")) };
         dl.set_more_text(text.into());
+        dl.set_more_changed(!changed.is_empty());
         let list = self.presets.borrow();
         let names: Vec<slint::SharedString> = list.iter().map(|p| p.name.as_str().into()).collect();
         dl.set_user_presets(ModelRc::from(Rc::new(VecModel::from(names))));
@@ -255,9 +258,51 @@ impl App {
 
     fn apply_user_preset(&self, index: i32) {
         let Some(window) = self.window() else { return };
-        let Some(opts) = self.presets.borrow().get(index.max(0) as usize).map(|p| p.opts.clone()) else { return };
+        let Some(preset) = self.presets.borrow().get(index.max(0) as usize).cloned() else { return };
+        let current = self.controller.borrow().options().clone();
+        // 적용돼 있는 프리셋을 다시 누르면 풀려 기본값으로 돌아간다
+        let on = current == preset.opts;
+        let opts = if on { DownloadOptions::default() } else { preset.opts };
+        if opts == current {
+            return;
+        }
         show_options(&window.global::<Download>(), &opts);
         self.options_changed(opts);
+        self.notify(if on { crate::lang::tr("프리셋 해제됨", "Preset cleared").to_string() } else { crate::trf!("{} 프리셋 적용됨", "{} preset applied", preset.name) });
+    }
+
+    /// 화면 언어를 바꾸고 저장한다. Rust 가 채우는 글도 새 언어로 다시 채운다.
+    fn set_language(&self, english: bool) {
+        lang::set_english(english);
+        self.store.borrow_mut().set(lang::STORE_KEY, lang::code(english));
+        self.show_language();
+    }
+
+    fn show_language(&self) {
+        let Some(window) = self.window() else { return };
+        window.global::<Lang>().set_en(lang::english());
+        window.global::<Settings>().set_language(lang::english() as i32);
+        window.global::<Nav>().set_version(crate::trf!("버전 {VERSION}", "Version {VERSION}").into());
+        window.global::<Download>().set_url_placeholder(lang::tr("링크 붙여넣기", "Paste a link").into());
+        self.sync_format_row();
+        self.show_update();
+        let ffmpeg = self.ffmpeg.borrow().clone();
+        self.set_ffmpeg(ffmpeg);
+    }
+
+    /// 링크 칸 위에 잠깐 뜨는 알약 알림.
+    fn notify(&self, text: String) {
+        let Some(window) = self.window() else { return };
+        let dl = window.global::<Download>();
+        dl.set_notice(text.into());
+        dl.set_notice_shown(true);
+        self.notice_timer.start(slint::TimerMode::SingleShot, std::time::Duration::from_millis(1800), || {
+            with_app(|app| {
+                if let Some(window) = app.window() {
+                    window.global::<Download>().set_notice_shown(false);
+                }
+            })
+        });
     }
 
     fn delete_user_preset(&self, index: i32) {
@@ -409,7 +454,7 @@ impl App {
             }
             Err(AddError::EmptyLink) => {
                 dl.set_url("".into());
-                dl.set_url_placeholder("링크를 먼저 입력하세요".into());
+                dl.set_url_placeholder(crate::lang::tr("링크를 먼저 입력하세요", "Enter a link first").into());
                 window.invoke_focus_url();
             }
             Err(AddError::Options(message)) => dl.set_error(message.into()),
@@ -534,7 +579,7 @@ impl App {
         let up = window.global::<Update>();
         let state = self.update.borrow();
         let view = app_view(&state, updater::can_self_update());
-        up.set_description(format!("현재 버전 {VERSION} · 시작할 때 새 버전 확인").into());
+        up.set_description(crate::trf!("현재 버전 {VERSION} · 시작할 때 새 버전 확인", "Version {VERSION} · checks for updates on launch").into());
         up.set_title(view.title.into());
         up.set_sub(view.sub.into());
         up.set_sub_error(view.sub_error);
@@ -615,7 +660,7 @@ impl App {
         }
         // 업데이트하면 앱이 꺼지므로 받고 있거나 기다리는 영상이 있으면 묻는다
         if let Some(question) = confirm_question(self.controller.borrow().active_count()) {
-            if !win::confirm("업데이트", &question) {
+            if !win::confirm(crate::lang::tr("업데이트", "Update"), &question) {
                 return;
             }
         }
@@ -790,14 +835,14 @@ fn start_job(tools: &Arc<Mutex<Tools>>, group: &Arc<KillGroup>, id: u32, spec: J
         };
         let job = std::panic::AssertUnwindSafe(|| run_job(&spec, &tools, &group, &emit));
         if std::panic::catch_unwind(job).is_err() {
-            emit(Event::Failed("알 수 없는 오류".into()));
+            emit(Event::Failed(crate::lang::tr("알 수 없는 오류", "Unknown error").into()));
         }
     });
 }
 
 fn wire_nav(window: &AppWindow) {
     let nav_global = window.global::<Nav>();
-    nav_global.set_version(format!("버전 {VERSION}").into());
+    nav_global.set_version(crate::trf!("버전 {VERSION}", "Version {VERSION}").into());
     let weak = window.as_weak();
     // 설정 쪽에서 마지막으로 보던 탭. 독의 '설정'을 누르면 여기로 돌아간다.
     let last_tab = RefCell::new(String::new());
@@ -831,9 +876,21 @@ fn wire_download(window: &AppWindow) {
     dl.on_preset_clicked(|key| {
         with_app(|app| {
             let Some(window) = app.window() else { return };
-            let opts = apply_preset(app.controller.borrow().options(), &key);
+            let current = app.controller.borrow().options().clone();
+            // 켜져 있는 프리셋을 다시 누르면 풀린다
+            let on = matching_preset(&current) == Some(key.as_str());
+            let opts = if on { clear_preset(&current) } else { apply_preset(&current, &key) };
+            if opts == current {
+                return;
+            }
             show_options(&window.global::<Download>(), &opts);
             app.options_changed(opts);
+            let label = match key.as_str() {
+                "best" => crate::lang::tr("최고 화질", "Best quality"),
+                "mp3" => crate::lang::tr("MP3 음원", "MP3 audio"),
+                other => other,
+            };
+            app.notify(if on { crate::lang::tr("프리셋 해제됨", "Preset cleared").to_string() } else { crate::trf!("{label} 프리셋 적용됨", "{label} preset applied") });
         })
     });
     dl.on_toggle_panel(|| {
@@ -868,7 +925,7 @@ fn wire_download(window: &AppWindow) {
         with_app(|app| {
             let Some(window) = app.window() else { return };
             let start = app.controller.borrow().folder().to_string();
-            if let Some(dir) = win::pick_folder("저장 위치 고르기", &start) {
+            if let Some(dir) = win::pick_folder(crate::lang::tr("저장 위치 고르기", "Choose where to save"), &start) {
                 let dir = dir.to_string_lossy().into_owned();
                 app.store.borrow_mut().set("folder", &dir);
                 window.global::<Download>().set_folder(dir.as_str().into());
@@ -885,11 +942,12 @@ fn wire_download(window: &AppWindow) {
 
 fn wire_settings(window: &AppWindow) {
     let st = window.global::<Settings>();
+    st.on_set_language(|index| with_app(|app| app.set_language(index == 1)));
     st.on_commit(|group| with_app(|app| app.commit_settings(&group)));
     st.on_browse_cookie(|| {
         with_app(|app| {
             let Some(window) = app.window() else { return };
-            if let Some(path) = win::pick_file("cookies.txt 고르기", "쿠키 파일", &["txt"]) {
+            if let Some(path) = win::pick_file(crate::lang::tr("cookies.txt 고르기", "Choose cookies.txt"), crate::lang::tr("쿠키 파일", "Cookie file"), &["txt"]) {
                 window.global::<Settings>().set_cookie_file(path.to_string_lossy().as_ref().into());
                 app.commit_settings("cookies");
             }
@@ -920,6 +978,7 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
     // 옛 유튜브 다운로더에서 넘어온 설정과 파일 정리. 실패해도 앱은 켜진다.
     let _ = migrate::run(&mut store, &Registry::open(app_info::LEGACY_SETTINGS_KEY));
 
+    lang::set_english(lang::english_from(store.get(lang::STORE_KEY).as_deref(), win::system_is_korean()));
     let downloads = std::env::var_os("USERPROFILE").map(PathBuf::from).unwrap_or_default().join("Downloads");
     let folder = store.get("folder").filter(|f| !f.is_empty()).unwrap_or_else(|| downloads.to_string_lossy().into_owned());
     let opts = options_from_map(&read_group(&store, "options"), store.get("format").as_deref());
@@ -941,7 +1000,7 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
         folder.clone(),
         data.join("archive.txt"),
         Box::new(|id, spec| with_app(|app| app.start_or_hold(id, spec))),
-        Box::new(|n| win::confirm("재생목록", &format!("영상 {n}개를 모두 받을까요?"))),
+        Box::new(|n| win::confirm(crate::lang::tr("재생목록", "playlist"), &crate::trf!("영상 {n}개를 모두 받을까요?", "Download all {n} videos?"))),
     );
 
     let cards = Rc::new(VecModel::<CardView>::default());
@@ -960,6 +1019,7 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
         form: RefCell::new(SettingsForm::new(settings.clone())),
         badge_timer: slint::Timer::default(),
         remove_timer: slint::Timer::default(),
+        notice_timer: slint::Timer::default(),
         cards,
         store: RefCell::new(store),
         tools,
@@ -976,6 +1036,8 @@ pub fn build() -> Result<AppWindow, slint::PlatformError> {
     });
     APP.with(|slot| *slot.borrow_mut() = Some(app.clone()));
     app.sync_format_row();
+    window.global::<Lang>().set_en(lang::english());
+    window.global::<Settings>().set_language(lang::english() as i32);
 
     wire_nav(&window);
     wire_download(&window);
